@@ -1,0 +1,1369 @@
+<!DOCTYPE html><html lang="es"><head>
+	<meta charset="iso-8859-1">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<!-- Para evitar que el iPad interprete CUITs y CUILs como números telefónicos: -->
+	<meta name="format-detection" content="telephone=no">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Mis Comprobantes</title>
+	<!-- Nav and address bar color -->
+	<meta name="theme-color" content="#0072b8">
+	<meta name="msapplication-navbutton-color" content="#0072b8">
+	<meta name="apple-mobile-web-app-status-bar-style" content="#0072b8">
+
+	<link href="css/roboto-fontface.css" rel="stylesheet">
+	<link href="css/bootstrap.css" rel="stylesheet">
+	<link href="css/bootstrap-dialog.min.css" rel="stylesheet">
+	<link href="css/font-awesome.min.css" rel="stylesheet">
+	<link href="css/framework_afip_v1.css" rel="stylesheet">
+	<link href="css/poncho.css" rel="stylesheet">
+	<link href="css/boleadoras.css?v=20180504" rel="stylesheet">
+	<link href="css/jquery.notice.css" rel="stylesheet">
+	<link href="css/jig.css?v=20180419" rel="stylesheet">
+	<link href="css/daterangepicker.css" rel="stylesheet">
+	<link href="css/bootstrap-datetimepicker.css" rel="stylesheet">
+	<link href="css/bootstrap-tokenfield.css?v20180723" rel="stylesheet">
+	<link href="css/tokenfield-typeahead.css" rel="stylesheet">
+	<link href="css/bootstrap-select.css" rel="stylesheet">
+	<link href="DataTables-1.10.16/css/dataTables.bootstrap.css" rel="stylesheet" type="text/css">
+	<!-- <link href="DataTables-1.10.16/css/buttons.dataTables.min.css" rel="stylesheet" type="text/css"> -->
+	<link href="DataTables-1.10.16/css/buttons.bootstrap.min.css" rel="stylesheet" type="text/css">
+
+	
+<!-- Head específico (inicio) -->
+
+		
+<style>
+.perspectiva {
+	/*perspective: 1000px;
+	transform-style: preserve-3d;*/
+}
+
+.cosa3d {
+	/*transform: rotateY(-90.1deg);*/
+	opacity: 0.0;
+}
+
+.dt-button-collection {
+	max-height: 300px !important;
+	overflow-y: auto !important;
+}
+
+</style>
+<!-- Head específico (fin) -->
+
+</head>
+<body>
+	<header>
+		<nav class="navbar navbar-top navbar-default" role="navigation">
+			<div class="container">
+				<div class="row">
+					<div class="col-lg-5 col-md-6 col-sm-5 col-xs-12">
+						<a class="navbar-brand" href=""><img alt="ARCA" srcset="images/logo_afip_3x.png 3x, images/logo_afip_2x.png 2x" src="images/logo_afip.png" class="logoAfip"></a>
+						<h5 class="nombreServicio text-uppercase">Mis Comprobantes</h5>
+						<div class="navbar-header">
+							<button class="navbar-toggle collapsed text-primary mobileOnly pull-right" type="button" data-toggle="collapse" data-target="#usernav" aria-expanded="false">
+								<i id="fa fa-user" class="fa fa-user" data-clipboard-text="fa-user"></i>
+							</button>
+						</div>
+					</div>
+					<div class="col-lg-7 col-md-6 col-sm-7 col-xs-12 p-a-0">
+						
+						<div class="collapsed navbar-collapse usernav" id="usernav">
+							<span class="light text-uppercase table m-a-0"><strong class="text-primary">BRANDI MATIAS ESTEBAN</strong> [20-34355806-7]<a title="Salir..." style="padding-left:2px;"><span class="fa fa-sign-out h6 p-l-1 m-a-0 manito" style="width:28px;" onclick="salirAplicacion('/mcmp');"></span></a></span>
+							<span class="light text-uppercase table m-a-0"><span class="nombre-propio nombre-activo pull-righ"><small>Representando a:</small> <strong class="text-success">BRANDI MATIAS ESTEBAN</strong> [20-34355806-7]<a title="Cambiar persona representada"><span class="fa fa-users p-l-1 light m-a-0 manito" style="width:30px;" onclick="window.location.href='seleccionIngreso.do?s';"></span></a></span></span>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+		</nav>
+	</header>
+<!-- Contenido (inicio) -->
+	<section class="jumbotron bg-gradient-primary">
+		<div class="jumbotron_bar m-b-0">
+			<div class="container">
+				<div class="row">
+					<div class="col-md-12">
+						<ol class="breadcrumb">
+							<li><a href="menuPrincipal.do">Menú Principal</a></li>
+							<li class="active">Comprobantes Emitidos</li>
+						</ol>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="jumbotron_body">
+			<div class="container">
+				<div class="row">
+					<div class="col-xs-12 col-md-12 col-lg-11 col-lg-offset-1">
+						<h1 id="titulo">Comprobantes Emitidos</h1>
+						<p>Desde esta sección podes consultar tus Comprobantes Emitidos</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<main role="main">
+		<div class="container">
+<!-- 			<ol class="breadcrumb"> -->
+<!-- 				<li><a href="menuPrincipal.do">Menú Principal</a></li> -->
+<!-- 				<li class="active">Comprobantes Emitidos</li> -->
+<!-- 			</ol> -->
+			<section>
+				<div class="col-md-12 col-lg-10 col-lg-offset-1">
+<!-- 					<h1 style="margin-top:-10px;">Comprobantes Emitidos</h1> -->
+					
+					
+					
+					<ul class="nav nav-tabs" id="tabsComprobantes">
+						<li class="active"><a href="#tabConsulta" data-toggle="tab">Consulta</a></li>
+						<li class="disabled" id="containerTabResultados"><a href="#tabResultados" data-toggle="tab">Resultados</a></li>
+						<li><a href="#tabHistorial" data-toggle="tab" id="linkTabHistorial">Historial</a></li>
+					</ul>
+					
+					<div class="tab-content">
+						<div id="tabConsulta" class="tab-pane fade in active">
+							<br>
+							<div>
+								<div class="row">
+									<div class="form-group col-md-12">
+										<label class="control-label" for="fechaEmision">Fecha del Comprobante <span class="small" style="color:#f00;" title="Campo obligatorio">*</span></label>
+										<div class="input-group">
+											<div class="input-group-addon" id="btnCalendarioFechaEmision">
+												<i class="glyphicon glyphicon-calendar"></i>
+											</div>
+											<input type="text" class="form-control" id="fechaEmision" required="">
+										</div>
+										<span class="help-block" id="hintFechaEmision">Rango máximo: 365 días</span>
+									</div>
+								</div>
+								<div class="row">
+									<div class="form-group col-md-6">
+										<label class="control-label" for="tipo">Tipo de Comprobante</label>
+										<div class="btn-group bootstrap-select show-tick form-control"><button type="button" class="btn dropdown-toggle bs-placeholder btn-default" data-toggle="dropdown" role="button" data-id="tipoComprobante" title=""><span class="filter-option pull-left"></span>&nbsp;<span class="bs-caret"><span class="caret"></span></span></button><div class="dropdown-menu open" role="combobox"><div class="bs-searchbox"><input type="text" class="form-control" autocomplete="off" role="textbox" aria-label="Search"></div><ul class="dropdown-menu inner" role="listbox" aria-expanded="false"><li data-original-index="0"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="1"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="2"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="3"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Recibo A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="4"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="5"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="6"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="7"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Recibo B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="8"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="9"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="10"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="11"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Recibo C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="12"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura de Exportación</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="13"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito por Operaciones con el Exterior</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="14"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito por Operaciones con el Exterior</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="15"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura M / Factura A con leyenda Operación Sujeta a Retención</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="16"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito M / Nota de Débito A con leyenda Operación Sujeta a Retención</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="17"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito M / Nota de Crédito A con leyenda Operación Sujeta a Retención</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="18"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Recibo M / Recibo A con leyenda Operación Sujeta a Retención</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="19"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Factura A   </span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="20"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Factura B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="21"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="22"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="23"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Crédito</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="24"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Factura C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="25"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Crédito A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="26"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Crédito B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="27"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Crédito C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="28"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Débito A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="29"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Débito B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="30"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Tique Nota de Débito C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="31"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura T</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="32"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito T</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="33"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito T</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="34"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura de Crédito electrónica MiPyMEs (FCE) A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="35"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito electrónica MiPyMEs (FCE) A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="36"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito electrónica MiPyMEs (FCE) A</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="37"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura de Crédito electrónica MiPyMEs (FCE) B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="38"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito electrónica MiPyMEs (FCE) B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="39"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito electrónica MiPyMEs (FCE) B</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="40"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Factura de Crédito electrónica MiPyMEs (FCE) C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="41"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Débito electrónica MiPyMEs (FCE) C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li><li data-original-index="42"><a tabindex="0" class="" data-tokens="null" role="option" aria-disabled="false" aria-selected="false"><span class="text">Nota de Crédito electrónica MiPyMEs (FCE) C</span><span class="glyphicon glyphicon-ok check-mark"></span></a></li></ul></div><select multiple="" class="form-control" data-live-search="true" data-none-selected-text="" id="tipoComprobante" size="4" tabindex="-98"><option value="1">Factura A</option><option value="2">Nota de Débito A</option><option value="3">Nota de Crédito A</option><option value="4">Recibo A</option><option value="6">Factura B</option><option value="7">Nota de Débito B</option><option value="8">Nota de Crédito B</option><option value="9">Recibo B</option><option value="11">Factura C</option><option value="12">Nota de Débito C</option><option value="13">Nota de Crédito C</option><option value="15">Recibo C</option><option value="19">Factura de Exportación</option><option value="20">Nota de Débito por Operaciones con el Exterior</option><option value="21">Nota de Crédito por Operaciones con el Exterior</option><option value="51">Factura M / Factura A con leyenda Operación Sujeta a Retención</option><option value="52">Nota de Débito M / Nota de Débito A con leyenda Operación Sujeta a Retención</option><option value="53">Nota de Crédito M / Nota de Crédito A con leyenda Operación Sujeta a Retención</option><option value="54">Recibo M / Recibo A con leyenda Operación Sujeta a Retención</option><option value="81">Tique Factura A   </option><option value="82">Tique Factura B</option><option value="83">Tique</option><option value="109">Tique C</option><option value="110">Tique Nota de Crédito</option><option value="111">Tique Factura C</option><option value="112">Tique Nota de Crédito A</option><option value="113">Tique Nota de Crédito B</option><option value="114">Tique Nota de Crédito C</option><option value="115">Tique Nota de Débito A</option><option value="116">Tique Nota de Débito B</option><option value="117">Tique Nota de Débito C</option><option value="195">Factura T</option><option value="196">Nota de Débito T</option><option value="197">Nota de Crédito T</option><option value="201">Factura de Crédito electrónica MiPyMEs (FCE) A</option><option value="202">Nota de Débito electrónica MiPyMEs (FCE) A</option><option value="203">Nota de Crédito electrónica MiPyMEs (FCE) A</option><option value="206">Factura de Crédito electrónica MiPyMEs (FCE) B</option><option value="207">Nota de Débito electrónica MiPyMEs (FCE) B</option><option value="208">Nota de Crédito electrónica MiPyMEs (FCE) B</option><option value="211">Factura de Crédito electrónica MiPyMEs (FCE) C</option><option value="212">Nota de Débito electrónica MiPyMEs (FCE) C</option><option value="213">Nota de Crédito electrónica MiPyMEs (FCE) C</option></select></div>
+									</div>
+									<div class="form-group col-md-6">
+										<label class="control-label" for="puntoVentaToken-tokenfield">Punto de Venta</label>
+										<div class="input-group">
+											<div class="tokenfield form-control"><input type="text" class="form-control" id="puntoVentaToken" style="padding: 20px; position: absolute; left: -10000px;" tabindex="-1"><input type="text" tabindex="-1" style="position: absolute; left: -10000px;"><input type="text" class="token-input" autocomplete="off" placeholder="" id="puntoVentaToken-tokenfield" tabindex="0" style="min-width: 60px; width: 387px;"></div>
+											<div class="input-group-addon">
+												<a href="#modalSeleccionPuntoVenta" id="btnMostrarPuntosVentas" data-toggle="modal"><i class="glyphicon glyphicon-list"></i></a>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="row">
+									<div class="form-group col-md-6">
+										<label class="control-label" for="comprobanteDesde">Número desde</label>
+										<input type="text" pattern="[0-9]*" class="form-control soloNumeros" id="comprobanteDesde" maxlength="8">
+									</div>
+									<div class="form-group col-md-6">
+										<label class="control-label" for="comprobanteHasta">Número hasta</label>
+										<input type="text" pattern="[0-9]*" class="form-control soloNumeros" id="comprobanteHasta" maxlength="8">
+									</div>
+								</div>
+								<div class="row">
+									<div class="form-group col-md-6">
+										<label class="control-label" for="cuitConsultada">CUIT del Emisor</label>
+										<select class="form-control" id="cuitConsultada">
+										
+												<option value="20343558067">20343558067</option>
+										
+										</select>
+									</div>
+									<div class="form-group col-md-6">
+										<label class="control-label" for="nroDocReceptor">Tipo y Nro. de Documento del Receptor</label>
+										<div class="input-group">
+											<div class="input-group-btn">
+												<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="white-space:nowrap;" id="btnTipoDocReceptor"><span id="textoTipoDocReceptor">CUIT / CUIL / CDI</span> <span class="caret"></span></button>
+												<ul class="dropdown-menu" id="listaTipoDocReceptor">
+													<li><a href="#">CUIT / CUIL / CDI</a></li>
+													<li><a href="#">DNI</a></li>
+													<li><a href="#">LC</a></li>
+													<li><a href="#">LE</a></li>
+												</ul>
+											</div>
+											<input type="text" pattern="[0-9]*" class="form-control soloNumeros" id="nroDocReceptor" maxlength="11">
+										</div>
+									</div>
+								</div>
+								<div class="row">
+									<div class="form-group col-md-6">
+										<label class="control-label" for="codigoAutorizacion">Código de Autorización</label>
+										<!-- <div class="input-group"> -->
+											<!-- <div class="input-group-btn">
+												<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="white-space:nowrap;" id="btnTipoCodAutorizacion"><span id="textoTipoCodAutorizacion">CAE</span> <span class="caret"></span></button>
+												<ul class="dropdown-menu" id="listaTipoCodAutorizacion">
+													<li><a href="#" title="Código de Autorización Electrónico">CAE</a></li>
+													<li><a href="#" title="Código de Autorización Electrónico Anticipado">CAEA</a></li>
+													<li><a href="#" title="Código Electrónico de Servicios Públicos">CESP</a></li>
+												</ul>
+											</div> -->
+											<input type="text" pattern="[0-9]*" class="form-control soloNumeros" id="codigoAutorizacion" maxlength="14">
+										<!-- </div> -->
+									</div>
+								</div>
+								
+								<div class="row">
+									<div class="form-group col-xs-12">
+										<button type="submit" class="btn btn-primary col-xs-12" id="buscarComprobantes">Buscar</button>
+									</div>
+								</div>
+								<br>
+								<br>
+							</div>
+							<br>
+						</div>
+						<div id="tabResultados" class="tab-pane fade">
+							<br>
+							<div class="progress" id="progresoResultados" style="display:none;">
+								<div class="progress-bar progress-bar-striped active" role="progressbar" style="width:100%">Cargando...</div>
+							</div>
+							<div id="contenidoResultados" style="display:none;">
+								<div class="panel panel-primary">
+									<div class="panel-heading">
+										<h3 class="panel-title">Filtro Aplicado</h3>
+									</div>
+									<div class="panel-body" style="padding-bottom:7px;" id="filtroAplicadoConsulta">
+										<ul>
+											<li>Tipo de comprobante: <b>Facturas A</b></li>
+										</ul>
+									</div>
+								</div>
+								<table class="table" id="tablaDataTables" style="width:100%">
+									<thead>
+										<tr>
+											<th>Fecha</th>
+											<th>Tipo</th>
+											<th>Número</th>
+											<th>Punto de Venta</th>
+											<th>Número Desde</th>
+											<th>Número Hasta</th>
+											<th>Cód. Autorización</th>
+											<th>Tipo Cód. Autoriz.</th>
+											<th>Cód. Autorización</th>
+											<th>Doc. Receptor</th>
+											<th>Tipo Doc. Receptor</th>
+											<th>Nro. Doc. Receptor</th>
+											<th>Denominación Receptor</th>
+											<th>Tipo Cambio</th>
+											<th>Moneda</th>
+											<th>Neto Grav. IVA 0%</th>
+											<th>Neto Grav. IVA 0%</th>
+											<th>IVA 2,5%</th>
+											<th>IVA 2,5%</th>
+											<th>Neto Grav. IVA 2,5%</th>
+											<th>Neto Grav. IVA 2,5%</th>
+											<th>IVA 5%</th>
+											<th>IVA 5%</th>
+											<th>Neto Grav. IVA 5%</th>
+											<th>Neto Grav. IVA 5%</th>
+											<th>IVA 10,5%</th>
+											<th>IVA 10,5%</th>
+											<th>Neto Grav. IVA 10,5%</th>
+											<th>Neto Grav. IVA 10,5%</th>
+											<th>IVA 21%</th>
+											<th>IVA 21%</th>
+											<th>Neto Grav. IVA 21%</th>
+											<th>Neto Grav. IVA 21%</th>
+											<th>IVA 27%</th>
+											<th>IVA 27%</th>
+											<th>Neto Grav. IVA 27%</th>
+											<th>Neto Grav. IVA 27%</th>
+											<th>Neto Gravado Total</th>
+											<th>Neto Gravado Total</th>
+											<th>Neto No Gravado</th>
+											<th>Neto No Gravado</th>
+											<th>Op. Exentas</th>
+											<th>Op. Exentas</th>
+											<th>Otros Tributos</th>
+											<th>Otros Tributos</th>
+											<th>Total IVA</th>
+											<th>Total IVA</th>
+											<th>Imp. Total</th>
+											<th>Imp. Total</th>
+										</tr>
+									</thead>
+								</table>
+								<br><br>
+							</div>
+						</div>
+						<div id="tabHistorial" class="tab-pane fade">
+							<br>
+							<p style="color:#999;">Historial de últimas consultas efectuadas</p>
+							<div class="perspectiva" id="historial3d">
+								<table class="table table-striped" id="tablaHistorialConsultas">
+									<thead>
+										<tr>
+											<th style="width:400px;">Filtro</th>
+											<th>Fecha de Ejecución</th>
+											<th>Resultados</th>
+											<th>&nbsp;</th>
+										</tr>
+									</thead>
+									<tbody></tbody>
+								</table>
+								<div class="row">
+									<div class="form-group col-xs-12">
+										<button type="submit" class="btn btn-primary col-xs-12" id="actualizarHistorial">Actualizar</button>
+									</div>
+								</div>
+								<br>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="modalSeleccionPuntoVenta" class="modal fade" tabindex="-1" role="dialog">
+				  <div class="modal-dialog">
+				    <div class="modal-content">
+				      <div class="modal-header">
+				        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span class="fa fa-close light manito" aria-hidden="true"></span></button>
+				        <h4 class="modal-title">Puntos de Venta</h4>
+				      </div>
+				      <div class="modal-body">
+				        <p id="noPoseePuntosVentaModal" style="display:none;">No posee puntos de venta electrónicos activos</p>
+						<select multiple="" class="form-control" id="listaPuntosVentaModal" size="4"></select>
+				      </div>
+				      <div class="modal-footer">
+				        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+				        <button type="button" class="btn btn-primary" data-dismiss="modal" id="btnAceptarModal">Aceptar</button>
+				      </div>
+				    </div><!-- /.modal-content -->
+				  </div>
+				</div>
+
+			</section>
+		</div>
+	</main>
+	<div style="height:200px;">&nbsp;</div>
+<!-- Contenido (fin) -->
+	
+	<footer class="main-footer p-y-0 p-t-2">
+		<div class="container p-y-2">
+			<div class="row">
+				<div class="col-md-2 col-sm-12">
+					<img class="image-responsive" alt="ARCA - Agencia de Recaudación y Control Aduanero" srcset="images/logo_afip_3x.png 3x, images/logo_afip_2x.png 2x" src="images/logo_afip.png" width="150px">
+					<br>
+				</div>
+				<div class="col-md-6 col-sm-12">
+					<div class="h5" style="color:#888;font-weight:500;">MIS COMPROBANTES <small>v2.2.3</small></div>
+				</div>
+				<div class="col-md-4 col-sm-12">
+					<ul>
+						<li><a target="_blank" href="https://serviciosweb.afip.gob.ar/consultas/">Envianos tu consulta</a></li>
+						<!-- <li><a target="_blank" href="#">Ayuda sobre el servicio</a></li> -->
+						<li><a target="_blank" href="http://www.afip.gob.ar/">Sitio web de ARCA</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</footer>
+	<footer class="main-footer navbar-fixed-bottom">
+		<div class="container text-muted">
+			<div class="row">
+
+				<div class="col-xs-10 col-sm-4">Viernes, 12 de junio de 2026</div><div class="col-sm-8 hidden-xs hidden-sm text-right">Autenticado por: AGENCIA DE RECAUDACIÓN Y CONTROL ADUANERO</div><div class="col-xs-2 col-sm-8 visible-sm-block text-right">Autenticado por: ARCA</div><div class="col-xs-2 col-sm-8 visible-xs-block text-right">ARCA</div>
+			</div>
+		</div>
+	</footer>
+	<script src="js/jquery.js"></script>
+	
+	<script src="js/jquery.cookie.js"></script>
+	<script src="js/jquery.notice.js"></script>
+	<script src="js/logout.js"></script>
+
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/bootstrap-dialog.min.js"></script>
+
+	<script src="js/bootstrap-tokenfield.js"></script>
+	<script src="js/typeahead.bundle.js"></script>
+	<script src="js/moment-with-locales.js"></script>
+	<script src="js/daterangepicker.js"></script>
+	<script src="js/bootstrap-datetimepicker.min.js"></script>
+	<script src="js/bootstrap-select.min.js"></script>
+	<script src="js/bootstrap-select-es_ES.js"></script>
+	
+	<script src="js/mcmp.js?v=20251131"></script>
+	
+	<script type="text/javascript" src="DataTables-1.10.16/js/jquery.dataTables.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/dataTables.bootstrap.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/dataTables.buttons.min.spanish.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/buttons.bootstrap.min.js"></script>
+	
+	<script type="text/javascript" src="DataTables-1.10.16/js/jszip.min.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/pdfmake.min.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/vfs_fonts.js"></script>
+	<script type="text/javascript" charset="UTF-8" src="DataTables-1.10.16/js/buttons.html5.min.js"></script>
+
+	<script type="text/javascript" src="DataTables-1.10.16/js/buttons.print.min.js"></script>
+	<script type="text/javascript" src="DataTables-1.10.16/js/buttons.colVis.min.js"></script>
+
+	
+<!-- Pie Específico (inicio) -->
+
+	<script type="text/javascript">
+	
+		var tablaResultados;
+		var mapaTiposComprobantes = new Map();
+		var fechaReemplazoComprobantesClaseM = '01/12/2025';
+
+		const rowFecha = 0;
+		const rowTipo = 1;
+		const rowNumero = 2;
+		const rowPuntoVenta = 3;
+		const rowNumeroDesde = 4;
+		const rowNumeroHasta = 5;
+		const rowCodAutorizacionStyled = 6;
+		const rowTipoCodAutorizacion = 7;
+		const rowCodAutorizacion = 8;
+		const rowDocReceptor = 9;
+		const rowTipoDocReceptor = 10;
+		const rowNroDocReceptor = 11;
+		const rowDenominacionReceptor = 12;
+		const rowTipoCambio = 13;
+		const rowMoneda = 14;
+		const rowNetoGravIVA0 = 15;
+		const rowNetoGravIVA0Styled = 16;
+		const rowIVA25 = 17;
+		const rowIVA25Styled = 18;
+		const rowNetoGravIVA25 = 19;
+		const rowNetoGravIVA25Styled = 20;
+		const rowIVA5 = 21;
+		const rowIVA5Styled = 22;
+		const rowNetoGravIVA5 = 23;
+		const rowNetoGravIVA5Styled = 24;
+		const rowIVA105 = 25;
+		const rowIVA105Styled = 26;
+		const rowNetoGravIVA105 = 27;
+		const rowNetoGravIVA105Styled = 28;
+		const rowIVA21 = 29;
+		const rowIVA21Styled = 30;
+		const rowNetoGravIVA21 = 31;
+		const rowNetoGravIVA21Styled = 32;
+		const rowIVA27 = 33;
+		const rowIVA27Styled = 34;
+		const rowNetoGravIVA27 = 35;
+		const rowNetoGravIVA27Styled = 36;
+		const rowNetoGravado = 37;
+		const rowNetoGravadoStyled = 38;
+		const rowNetoNoGravado = 39;
+		const rowNetoNoGravadoStyled = 40;
+		const rowOpExentas = 41;
+		const rowOpExentasStyled = 42;
+		const rowOtrosTributos = 43;
+		const rowOtrosTributosStyled = 44;
+		const rowIVA = 45;
+		const rowIVAStyled = 46;
+		const rowTotal = 47;
+		const rowTotalStyled = 48;		
+		
+		$(function(){
+		/***************************************************************************/
+		
+			/*$('#tipoToken').tokenfield({
+				autocomplete: {
+					source: ['Factura A','Nota de Crédito A','Nota de Débito A','Factura B','Nota de Crédito B','Nota de Débito B'],
+					delay: 100
+				},
+				showAutocompleteOnFocus: true
+			});
+
+			$('#puntoVentaToken').tokenfield({
+				autocomplete: {
+					source: ['uno','dos','tres'],
+					delay: 100
+				},
+				showAutocompleteOnFocus: true
+			});*/
+			
+			function mostrarHistorialPorErrores() {
+				$("#containerTabResultados").addClass("disabled");
+				actualizarHistorialConsultasAjax("E");
+			}
+			
+			function cargarListaTiposComprobantes() {
+				var listaTiposComprobantesa = $("#tipoComprobante");
+				listaTiposComprobantesa.empty();
+				var clave;
+				var d = new Object();
+				d.f = "tiposComprobantes";
+				d.t = "E";
+				
+				$.ajax({
+					url:"ajax.do",
+					data: d,
+					dataType:"json",
+					success: function(resultado){
+						//console.log(resultado);
+						if (resultado.datos.length == 0) {
+							$.noticeAdd({text:"Tipos de Coprobantes no disponibles", type:"notice-error", timeout:1000});
+						} else {
+							$.each(resultado.datos, function(i, elemento) {
+								listaTiposComprobantesa.append($("<option>", {
+									value: elemento.clave,
+									text: elemento.valor
+								}));
+								mapaTiposComprobantes.set(elemento.clave, elemento.valor);
+							});
+							listaTiposComprobantesa.selectpicker();
+						}
+					},
+					error: function(xhr, error, thrown) {
+						//alert("Sin sesión?");
+						//$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:2000});
+						$.noticeAdd({text:"Tipos de Coprobantes no disponibles", type:"notice-error", timeout:1000});
+					}
+				});
+			};
+			
+			cargarListaTiposComprobantes();
+			
+			//$("#tipoComprobante").selectpicker("setStyle", "btn-sm", "add");
+			//$("#tipoComprobante").selectpicker("liveSearch", true);
+			
+			$('#puntoVentaToken')
+				/*.on('tokenfield:createtoken', function (e) { // tokenfield:createtoken me permite evitar que se cree, pero no lo borra
+					var valor = e.attrs.value;
+					if (!(/^\d+$/.test(valor)) || (valor < 1) || (valor > 99998)) {
+					  return false;
+					}
+				})*/
+				.on('tokenfield:createdtoken', function (e) { // tokenfield:createdtoken (tokenfield:createDDDDtoken) permite hacer algo después de que se creó (ej: marcarlo como inválido)
+					var valor = e.attrs.value;
+					if (!(/^\d+$/.test(valor)) || (valor < 1) || (valor > 99998)) {
+					  $(e.relatedTarget).addClass('invalid')
+					  $(e.relatedTarget).attr("title", "Inválido (debe ser numérico, entre 1 y 99998)");
+					}
+				})
+				.tokenfield({
+				createTokensOnBlur:true,
+				beautify:false/*,
+				inputType:"number"*/
+			});
+			/*****************************/
+
+			$(".nav-tabs a[data-toggle=tab]").on("click", function(e) {
+				if ($(this).parent().hasClass("disabled")) {
+					e.preventDefault();
+					return false;
+				}
+			});
+			
+			$("input").on("click", function(e) {
+				ocultarError(this);
+			});
+			
+			$("body").on("click", ".popover", function(e) {
+				ocultarError(this);
+			});
+			
+			$("div.dropdown-menu").on("hover", function(e) {
+				ocultarError(this);
+			});
+
+			$("#tipoComprobante").on("change", function(e) {
+				ocultarError(this);
+			});
+			
+			$(".soloNumeros").on("keypress", function(evento) {
+				var kcode = (evento.which) ? evento.which : evento.keyCode;
+				return ((kcode > 47 && kcode < 58) || (kcode > 36 && kcode < 41) || kcode == 8 || kcode == 0 || ((kcode == 99 || kcode == 118) && (evento.ctrlKey === true || evento.metaKey === true)));
+			});
+			
+			$(".soloNumeros").on("change", function() {
+				var value = $(this).val();
+				$(this).val(value.replace(/[^0-9]/g, ''));
+			});
+			
+			$(".soloNumeros").on("paste", function(evento) {
+				try {
+					var pastedData;
+					if (typeof evento.clipboardData === 'undefined') {
+						pastedData = window.clipboardData.getData('Text');
+					} else {
+						pastedData = evento.originalEvent.clipboardData.getData('text/plain');
+					}
+					var valor = pastedData.replace(/[^0-9]/g, '');
+					if (pastedData != valor) {
+						if ($(this).prop("maxlength") != null)
+							valor = valor.substr(0, $(this).prop("maxlength"));
+						$(this).val(valor);
+						return false;
+					}
+				} catch (e) {
+					var campo = this;
+					setTimeout(function() {
+						var value = $(campo).val();
+						$(campo).val(value.replace(/[^0-9]/g, ''));
+					}, 100);
+				}
+			});
+			
+			$("#btnAceptarModal").click(function() {
+				$('#puntoVentaToken').val($('#listaPuntosVentaModal').val());
+				$('#puntoVentaToken').change();
+			});
+			
+			$("#btnTipoDocReceptor").click(function() {
+				ocultarError(this);
+			});
+			
+			$("#buscarPuntosVenta").click(function() {
+				//alert("[ventana selección puntos de venta]");
+				return false;
+			});
+			
+			$("#buscarComprobantes").click(function() {
+				if ($('.tokenfield .invalid').length > 0) {
+					if ($('.tokenfield .invalid').length == 1) {
+						mostrarPopup("puntoVentaToken-tokenfield", ["El punto de venta debe ser numérico, entre 1 y 99998"], "error");
+					} else {
+						mostrarPopup("puntoVentaToken-tokenfield", ["Los puntos de venta deben ser numéricos, entre 1 y 99998"], "error");
+					}
+					return;
+				}
+				
+				if ($('.token-label').length > 30) {
+					mostrarPopup("puntoVentaToken-tokenfield", ["No es posible consultar por mas de 30 puntos de venta"], "error");
+					return;
+				}
+				
+				var d = new Object();
+				d.f = "generarConsulta";
+				d.t = "E";
+				
+				var fechaEmision = $('#fechaEmision').val();
+				var puntosVenta = $('#puntoVentaToken').val();
+				var tiposComprobantes = $('#tipoComprobante').val();
+				var comprobanteDesde = $('#comprobanteDesde').val();
+				var comprobanteHasta = $('#comprobanteHasta').val();
+				var cuitConsultada = $('#cuitConsultada').val();
+				var tipoDocReceptor = $("#textoTipoDocReceptor").text();
+				var nroDocReceptor = $('#nroDocReceptor').val();
+				///var tipoCodigoAutorizacion = $("#textoTipoCodAutorizacion").text();
+				var codigoAutorizacion = $('#codigoAutorizacion').val();
+				
+				if (fechaEmision != "") {
+					d.fechaEmision = fechaEmision;
+				}
+				
+				if (puntosVenta != "") {
+					d.puntosVenta = puntosVenta.split(",");
+				}
+				
+				if (tiposComprobantes != "") {
+					d.tiposComprobantes = tiposComprobantes;
+				}
+				
+				if (comprobanteDesde != "") {
+					d.comprobanteDesde = comprobanteDesde;
+				}
+				
+				if (comprobanteHasta != "") {
+					d.comprobanteHasta = comprobanteHasta;
+				}
+				
+				if (cuitConsultada != "") {
+					d.cuitConsultada = cuitConsultada;
+				}
+				
+				if (nroDocReceptor != "") {
+					d.tipoDoc = descTipoDocInv(tipoDocReceptor);
+					d.nroDoc = nroDocReceptor;
+				}
+				
+				if (codigoAutorizacion != "") {
+					///d.tipoCodigoAutorizacion = tipoCodigoAutorizacion;
+					d.codigoAutorizacion = codigoAutorizacion;
+				}
+				
+				ocultarErrores();
+				//console.log(d);
+
+				$.ajax({
+					url:"ajax.do",
+					data: d,
+					dataType:"json",
+					success: function(resultado){
+						//console.log(resultado);
+						if (resultado.estado == "ok") {
+							if (resultado.datos.estado == "PE") {
+								cargarResultados(resultado.datos.idConsulta);
+							} else {
+								mostrarHistorialPorErrores();
+							}
+						} else {
+							mostrarErrores(resultado);
+						}
+					},
+					error: function(xhr, error, thrown) {
+						//alert("Sin sesión?");
+						$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:5000});
+						mostrarHistorialPorErrores();
+					}
+				});
+				
+				return false;
+			});
+			
+			function cargarPuntosVenta() {
+				var d = new Object();
+				d.f = "listaPuntosVenta";
+				
+				$.ajax({
+					url:"ajax.do",
+					data: d,
+					dataType:"json",
+					success: function(resultado){
+						//console.log(resultado);
+						var listaPuntosVenta = $("#listaPuntosVentaModal");
+						listaPuntosVenta.empty();
+						if (resultado.datos.length == 0) {
+							$("#noPoseePuntosVentaModal").fadeIn();
+						} else {
+							$.each(resultado.datos, function(i, elemento) {
+								listaPuntosVenta.append($("<option>", {
+									value: padCeros(elemento.clave, 5),
+									text: padCeros(elemento.clave, 5)+" - "+elemento.valor
+								}));
+							});
+						}
+					},
+					error: function(xhr, error, thrown) {
+						//alert("Sin sesión?");
+						//$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:2000});
+						$.noticeAdd({text:"Puntos de Venta no disponibles", type:"notice-error", timeout:1000});
+
+					}
+				});
+			}
+			
+			$('#btnMostrarPuntosVentas').click(function(){
+				if (($("#listaPuntosVentaModal > option").length == 0) && ($("#noPoseePuntosVentaModal").css("display") == "none")) {
+					//console.log("cargarPuntosVenta()");
+					//console.log('$("#noPoseePuntosVentaModal").css("display") == '+$("#noPoseePuntosVentaModal").css("display"));
+					cargarPuntosVenta();
+				}
+			});
+			
+			function actualizarHistorialConsultasAjax(tipoConsulta) {
+				var d = new Object();
+				d.f = "listaConsultas";
+				d.t = tipoConsulta;
+				
+				//console.log(d);
+				////alert(JSON.stringify(d));
+
+				$.ajax({
+					url:"ajax.do",
+					data: d,
+					dataType:"json",
+					success: function(resultado){
+						//console.log(resultado);
+						actualizarHistorialConsultas(resultado.datos);
+						$('#tabsComprobantes a[href="#tabHistorial"]').tab('show');
+						//$("#historial3d").css({transform:"rotateY(0deg)", opacity: "1", transition:"0.25s"});
+						//setTimeout('$("#historial3d").css({transform:"rotateX(40deg)", opacity: "1", transition:"0.25s"});', 10);
+						//setTimeout('$("#historial3d").css({transform:"rotateX(0deg)", opacity: "1", transition:"0.25s"});', 300);
+						//setTimeout('$(".cosa3d").css({transform:"rotateY(240deg)", opacity: "1", transition:"0.25s"});', 10);
+						//setTimeout('$(".cosa3d").css({transform:"rotateY(360deg)", opacity: "1", transition:"0.25s"});', 10);
+						setTimeout("girarCosa()", 10);
+					},
+					error: function(xhr, error, thrown) {
+						//alert("Sin sesión?");
+						$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:5000});
+					}
+				});
+			}
+			
+			function actualizarHistorialConsultas(datos) {
+				var botones = "<button class=\"btn btn-primary btn-sm btnVerResultadoHistorico\">Ver</button> <div class=\"btn-group\"><button type=\"button\" class=\"btn btn-default btn-sm dropdown-toggle\" data-toggle=\"dropdown\">Exportar <span class=\"caret\"></span></button> <ul class=\"dropdown-menu\"><li><a href=\"#\" data-tipo-expo=\"csv\" title=\"Archivo de texto separdo por comas\" class=\"btnExportar\">CSV</a></li><li><a href=\"#\" data-tipo-expo=\"txt\" title=\"Archivo de texto separdo por tabs\" class=\"btnExportar\">TXT</a></li>"+/*"<li><a href=\"#\" data-tipo-expo=\"xls\" class=\"btnExportar inactivo\">Excel</a></li>"+*/"</ul></div>";
+				var contenido = "";
+				$("#tablaHistorialConsultas tbody").empty();
+				if ((datos != null) && (datos.length > 0)) {
+					var numFilas = datos.length;
+					var consulta;
+					var resultados;
+					for (var i=0;i < numFilas; i++) {
+						consulta = datos[i];
+						resultados = (consulta.estado == "PE")?"Pendiente":((consulta.estado == "PR")?"Procesando":((consulta.estado == "ER")?"<span title=\""+consulta.error+"\">Error</span>":(consulta.cantidadResultados+" comprobante"+((consulta.cantidadResultados != 1)?"s":""))));
+						contenido += "<tr class=\"cosa3d\" data-id-consulta=\""+consulta.codigo+"\"><td>"+formatearConsultaParaSeccionHistorial(consulta)+"</td><td>"+((consulta.fechaInicioProc != null)?consulta.fechaInicioProc:"-")+"</td><td>"+resultados+"</td><td nowrap style=\"padding-right:15px;\">"+((consulta.estado == "TE")?botones:"")+"</td></tr>";
+					}
+				} else {
+					contenido = "<tr><td colspan='4'>No hay consultas previas</td></tr>"
+				}
+				
+				//console.log(contenido);
+				
+				$("#tablaHistorialConsultas tbody").html(contenido);
+			}
+			
+			function formatearConsultaParaSeccionHistorial(consulta) {
+				var filtroFecha = "<li title=\"Fecha del Comprobante\">Fecha: "+((consulta.filtroFechaDesde == consulta.filtroFechaHasta)?consulta.filtroFechaDesde:(consulta.filtroFechaDesde+" a "+consulta.filtroFechaHasta))+"</li>";
+				var filtroTiposComprobantes = (consulta.filtroTiposCmp == null)?"":("<li title=\"Tipo de Comprobante\">"+descListaTiposComprobantes(mapaTiposComprobantes, consulta.filtroTiposCmp)+"</li>");
+				var filtroPuntosVenta = (consulta.filtroPuntosVenta == null)?"":("<li>Puntos de Venta: "+formatearListaPuntosVenta(consulta.filtroPuntosVenta)+"</li>");
+				var filtroNroCmp = (consulta.filtroNroCmpDesde == null)?"":("<li>Nro. de Comprobante: "+((consulta.filtroNroCmpDesde == consulta.filtroNroCmpHasta)?padCeros(consulta.filtroNroCmpDesde, 8):(padCeros(consulta.filtroNroCmpDesde, 8)+" a "+padCeros(consulta.filtroNroCmpHasta, 8)))+"</li>");
+				var filtroEmisor = (consulta.filtroCuitConsultada == null)?"":("<li>Emisor: <b>"+consulta.filtroCuitConsultada+"</b></li>");
+				var filtroTipoNroDoc = (consulta.filtroNroDoc == null)?"":("<li>Receptor: "+((consulta.filtroTipoDoc == null)?"":(descTipoDocFiltro(consulta.filtroTipoDoc)+" "))+consulta.filtroNroDoc+"</li>");
+				var filtroCodigoAutorizacion = (consulta.filtroNroCodAut == null)?"":("<li title=\"Código de Autorización\">Cód. Aut.: "+consulta.filtroNroCodAut+"</li>");
+				return "<ul>"+filtroFecha+filtroTiposComprobantes+filtroPuntosVenta+filtroNroCmp+filtroEmisor+filtroTipoNroDoc+filtroCodigoAutorizacion+"</ul>";
+			}
+			
+			function formatearConsultaParaSeccionResultados(consulta) {
+				var filtroFecha = "<li style='padding-left:8em;text-indent:-8em;'>Fecha del Comprobante: <b>"+((consulta.filtroFechaDesde == consulta.filtroFechaHasta)?consulta.filtroFechaDesde:(consulta.filtroFechaDesde+"</b>&nbsp; a &nbsp;<b>"+consulta.filtroFechaHasta))+"</b></li>"; // El filtro de fecha siempre está presente
+				var filtroTiposComprobantes = (consulta.filtroTiposCmp == null)?"":("<li style='padding-left:11em;text-indent:-11em;'>Tipos de Comprobantes: <b>"+descListaTiposComprobantes(mapaTiposComprobantes, consulta.filtroTiposCmp)+"</b></li>");
+				var filtroPuntosVenta = (consulta.filtroPuntosVenta == null)?"":("<li>Puntos de Venta: <b>"+formatearListaPuntosVenta(consulta.filtroPuntosVenta)+"</b></li>");
+				var filtroNroCmp = (consulta.filtroNroCmpDesde == null)?"":("<li>Nro. de Comprobante: <b>"+((consulta.filtroNroCmpDesde == consulta.filtroNroCmpHasta)?padCeros(consulta.filtroNroCmpDesde, 8):(padCeros(consulta.filtroNroCmpDesde, 8)+"</b>&nbsp; a &nbsp;<b>"+padCeros(consulta.filtroNroCmpHasta, 8)))+"</b></li>");
+				var filtroEmisor = (consulta.filtroCuitConsultada == null)?"":("<li>Emisor: <b>"+consulta.filtroCuitConsultada+"</b></li>");
+				var filtroTipoNroDoc = (consulta.filtroNroDoc == null)?"":("<li>Receptor: <b>"+((consulta.filtroTipoDoc == null)?"":(descTipoDocFiltro(consulta.filtroTipoDoc)+" &nbsp;"))+consulta.filtroNroDoc+"</b></li>");
+				var filtroCodigoAutorizacion = (consulta.filtroNroCodAut == null)?"":("<li>Cód. Autorización: <b>"+consulta.filtroNroCodAut+"</b></li>");
+				return "<ul style='margin-left:-20px;'>"+filtroFecha+filtroTiposComprobantes+filtroPuntosVenta+filtroNroCmp+filtroEmisor+filtroTipoNroDoc+filtroCodigoAutorizacion+"</ul>";
+			}
+			
+			function actualizarCamposFiltro(consulta) {
+				$('#fechaEmision').val(consulta.filtroFechaDesde+" - "+consulta.filtroFechaHasta);
+				
+				if (consulta.filtroTiposCmp != null) {
+					$('#tipoComprobante').val(consulta.filtroTiposCmp.split(","));
+				} else {
+					$('#tipoComprobante').val(null);
+				}
+				$('#tipoComprobante').selectpicker("render");
+				
+				if (consulta.filtroPuntosVenta != null) {
+					$('#puntoVentaToken').val(formatearListaPuntosVenta(consulta.filtroPuntosVenta));
+				} else {
+					$('#puntoVentaToken').val(null);
+				}
+				$('#puntoVentaToken').change();
+				
+				$('#comprobanteDesde').val(consulta.filtroNroCmpDesde);
+				$('#comprobanteHasta').val(consulta.filtroNroCmpHasta);
+				
+				if (consulta.filtroTipoDoc != null) {
+					$("#textoTipoDocReceptor").text(descTipoDocFiltro(consulta.filtroTipoDoc));
+				} else {
+					$("#textoTipoDocReceptor").text(descTipoDocFiltro(80));
+				}
+				
+				$('#nroDocReceptor').val(consulta.filtroNroDoc);
+				$('#codigoAutorizacion').val(consulta.filtroNroCodAut);
+			}
+			
+			function estimarCantidadResultados(idConsulta) {
+				var d = new Object();
+				var serverSide = true;
+				d.f = "estimarResultados";
+				d.id = idConsulta;
+				
+				$.ajax({
+					url:"ajax.do",
+					data: d,
+					dataType:"json",
+					async: false,
+					success: function(resultado){
+						if (resultado.datos.length == 0) {
+							$.noticeAdd({text:"No es posible obtener un resultado", type:"notice-error", timeout:1000});
+						} else {
+							serverSide = resultado.datos.serverSide;
+						}
+					},
+					error: function(xhr, error, thrown) {
+						$.noticeAdd({text:"No es posible obtener un resultado", type:"notice-error", timeout:1000});
+					}
+				});
+							
+				return serverSide;
+			}
+			
+			function generarColumnaImporte(row, colIndex, colTipoCambioIndex, colMonedaIndex, mostrarTipoCambio) {
+				var importe = row[colIndex];
+				var tipoCambio = row[colTipoCambioIndex]; 
+				var moneda = row[colMonedaIndex];
+
+				var tdContent = '-'
+
+				if (importe != null) {
+					var spanTipoCambio = "";
+
+					if (mostrarTipoCambio && tipoCambio != null && moneda != '$') {
+						try {
+							spanTipoCambio = "<br> <span class='small_gris' style='white-space:nowrap;' title='Tipo de Cambio'>TC: "+(tipoCambio*1).toLocaleString('es', {minimumFractionDigits:4})+"</span>";
+						} catch (e) {
+							spanTipoCambio = "<br> <span class='small_gris' style='white-space:nowrap;' title='Tipo de Cambio'>TC: "+tipoCambio+"</span>";
+						}
+					}
+
+					try {
+						tdContent = '<span class="moneda">'+moneda+'</span>&nbsp;&nbsp;'+(importe*1).toLocaleString('es', {minimumFractionDigits:2})+spanTipoCambio;
+					} catch (e) {
+						tdContent = '<span class="moneda">'+moneda+'</span>&nbsp;&nbsp;'+importe+spanTipoCambio;
+					}
+				} 
+
+				return tdContent;
+			}
+
+			function generarEstilosColumnaImporte(td, row, colIndex) {
+				var importe = row[colIndex];
+
+				if (importe == null) {
+					$(td).addClass('alignCenter');
+				} else {
+					$(td).addClass('alignRight');
+				}
+			}
+
+			function cargarResultados(idConsulta) {
+				$("#containerTabResultados").removeClass("disabled");
+				$("#contenidoResultados").hide();
+				$("#progresoResultados").fadeIn();
+				$('#tabsComprobantes a[href="#tabResultados"]').tab('show');
+				
+				var serverSide = estimarCantidadResultados(idConsulta);
+				
+				var tablaDataTablesConfig = {
+					"destroy": true,
+					"responsive": true,
+					"scrollX": true,
+					"scrollCollapse": true, 
+					"fixedHeader": true,
+					"serverSide": serverSide,
+					"ordering": false,
+					"language": {
+						"url": "DataTables-1.10.16/js/dataTables.spanish.js?v=20180326"
+					},
+					lengthChange: false,
+					"buttons": [],
+					"columnDefs": [
+						{
+							"responsivePriority": 1,
+							targets: [rowFecha]
+						},
+						{
+							"render": function(data, type, row) {
+								return data +' - '+descTipoComprobante(mapaTiposComprobantes, data, row[rowFecha]);
+							},
+							targets: [rowTipo]
+						},
+						{
+							"render": function(data, type, row) {
+								if (row[rowNumeroDesde] === row[rowNumeroHasta]) {
+									return padCeros(row[rowPuntoVenta], 5)+'-'+padCeros(row[rowNumeroDesde], 8);
+								} else {
+									return padCeros(row[rowPuntoVenta], 5)+'-'+padCeros(row[rowNumeroHasta], 8)+'<span style="color:#666">/.../</span>'+padCeros(row[rowNumeroDesde], 8);
+								}
+							},
+							targets: [rowNumero]
+						},
+						{
+							"render": function(data, type, row) {
+								if (row[rowTipoCodAutorizacion] != null) {
+									return row[rowTipoCodAutorizacion] +' - '+row[rowCodAutorizacion];
+								} else {
+									return row[rowCodAutorizacion];
+								}
+							},
+							targets: [rowCodAutorizacionStyled]
+						},
+						{
+							"render": function(data, type, row) {
+								if (row[rowNroDocReceptor] != null) {
+									return descTipoDoc(row[rowTipoDocReceptor]) +' '+row[rowNroDocReceptor];
+								} else {
+									return "";
+								}
+							},
+							targets: [rowDocReceptor]
+						},
+						{
+							"render": function(data, type, row) {
+								return descTipoDoc(data);
+							},
+							targets: [rowTipoDocReceptor]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA0, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA0Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA25, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVA25Styled]
+						},	
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA25, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA25Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA5, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVA5Styled]
+						},	
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA5, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA5Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA105, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVA105Styled]
+						},	
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA105, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA105Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA21, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVA21Styled]
+						},	
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA21, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA21Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA27, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVA27Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravIVA27, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravIVA27Styled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoGravado, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoGravadoStyled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowNetoNoGravado, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowNetoNoGravadoStyled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowOpExentas, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowOpExentasStyled] 
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowOtrosTributos, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowOtrosTributosStyled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowIVA, rowTipoCambio, rowMoneda, false);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowIVAStyled]
+						},
+						{
+							"render": function(data, type, row) {
+								return generarColumnaImporte(row, rowTotal, rowTipoCambio, rowMoneda, true);
+							},
+							"createdCell": function (td, cellData, row, rowIndex, colIndex) {
+								generarEstilosColumnaImporte(td, row, colIndex-1);
+							},
+							targets: [rowTotalStyled]
+						},
+						{
+							"visible": false,
+							targets: [rowPuntoVenta, rowNumeroDesde, rowNumeroHasta, rowCodAutorizacionStyled, rowTipoCodAutorizacion, rowCodAutorizacion, 
+							rowDocReceptor, rowTipoDocReceptor, rowNroDocReceptor, rowTipoCambio, rowMoneda, 
+							rowNetoGravIVA0, rowNetoGravIVA0Styled, 
+							rowIVA25, rowIVA25Styled, rowNetoGravIVA25, rowNetoGravIVA25Styled, 
+							rowIVA5, rowIVA5Styled, rowNetoGravIVA5, rowNetoGravIVA5Styled, 
+							rowIVA105, rowIVA105Styled, rowNetoGravIVA105, rowNetoGravIVA105Styled, 
+							rowIVA21, rowIVA21Styled, rowNetoGravIVA21, rowNetoGravIVA21Styled, 
+							rowIVA27, rowIVA27Styled, rowNetoGravIVA27, rowNetoGravIVA27Styled, 
+							rowNetoGravado, rowNetoGravadoStyled, rowNetoNoGravado, rowNetoNoGravadoStyled, rowOpExentas, rowOpExentasStyled, 
+							rowOtrosTributos, rowOtrosTributosStyled, rowIVA, rowIVAStyled, rowTotal]
+						}
+					],
+					"lengthMenu": [[5, 10, 25, 50], [5, 10, 25, 50]],
+					"deferRender": true,
+					"ajax": {
+						url: "ajax.do",
+						dataSrc: "datos.data",
+						error: function(xhr, error, thrown) {
+							setTimeout('$("#progresoResultados").fadeOut();', 100);
+							$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:5000});
+							mostrarHistorialPorErrores();
+						},
+						dataFilter: function(data, type) {
+							try {
+								$("#progresoResultados").fadeOut();
+								var resultado = $.parseJSON(data);
+								var consulta = resultado.datos.consulta;
+								var filtroHtml = formatearConsultaParaSeccionResultados(consulta);
+								
+								$("#filtroAplicadoConsulta").html(filtroHtml);
+								
+								actualizarCamposFiltro(consulta);
+								
+
+								setTimeout('$("#contenidoResultados").fadeIn();tablaResultados.columns.adjust();', 1000);
+								return data; // TODO: redefinir el elemento de la tabla que contiene los datos (si me deja poner subelementos) o redefinir el json que devuelvo para evitar esto
+							} catch (e) {
+								setTimeout('$("#progresoResultados").fadeOut();', 100);
+								$.noticeAdd({text:"Error de conexión. Verifique que su sesión no haya expirado.", type:"notice-error", timeout:5000});
+								mostrarHistorialPorErrores();
+								return "{\"data\":[]}";
+							}
+						}
+					}
+
+				};
+
+				tablaDataTablesConfig.buttons.push({
+					text: "CSV",
+					titleAttr: "Exportar como CSV",
+					action:function(e, dt, node, config) {
+						window.location.href = "descargarComprobantes.do?id="+idConsulta+"&tc=E&tf=csv";
+					},
+					className: "btn btn-defaut btn-sm sinborde",
+				});
+
+				tablaDataTablesConfig.buttons.push({
+					extend: "colvis",
+					text: "<i class='fa fa-lg fa-columns'></i>",
+					titleAttr: "Mostrar/ocultar columnas",
+					columns: [rowFecha, rowTipo, rowNumero, rowCodAutorizacionStyled, rowDocReceptor, rowDenominacionReceptor, 
+					rowNetoGravIVA0Styled, 
+					rowIVA25Styled, rowNetoGravIVA25Styled, rowIVA5Styled, rowNetoGravIVA5Styled, 
+					rowIVA105Styled, rowNetoGravIVA105Styled, rowIVA21Styled, rowNetoGravIVA21Styled, 
+					rowIVA27Styled, rowNetoGravIVA27Styled, 
+					rowNetoGravadoStyled, rowNetoNoGravadoStyled, rowOpExentasStyled, rowOtrosTributosStyled, rowIVAStyled, rowTotalStyled],
+					className: "btn btn-defaut btn-sm sinborde"
+				});
+
+				tablaDataTablesConfig.buttons.push({
+					extend: "print",
+					text: "<i class='fa fa-lg fa-print'></i>",
+					titleAttr: "Imprimir...",
+					exportOptions: {
+						columns: [rowFecha, rowTipo, rowNumero, rowCodAutorizacionStyled, rowDocReceptor, rowDenominacionReceptor, 
+						rowNetoGravadoStyled, rowNetoNoGravadoStyled, rowOpExentasStyled, rowOtrosTributosStyled, rowIVAStyled, rowTotalStyled]
+					},
+					className: "btn btn-defaut btn-sm sinborde"
+				});
+
+				tablaDataTablesConfig.buttons.push({
+					extend: "pageLength",
+					titleAttr: "Cantidad de registros por página",
+					className: "btn btn-defaut btn-sm sinborde"
+				});
+				
+				if (!serverSide) {
+					
+					tablaDataTablesConfig.buttons.push({
+						extend: "excel",
+						exportOptions: {
+							columns: [rowFecha, rowTipo, rowPuntoVenta, rowNumeroDesde, rowNumeroHasta, rowCodAutorizacionStyled, 
+							rowTipoDocReceptor, rowNroDocReceptor, rowDenominacionReceptor, rowTipoCambio, rowMoneda, 
+							rowNetoGravIVA0, rowIVA25, rowNetoGravIVA25, rowIVA5, rowNetoGravIVA5, rowIVA105, rowNetoGravIVA105, rowIVA21, rowNetoGravIVA21, rowIVA27, rowNetoGravIVA27, 
+							rowNetoGravado, rowNetoNoGravado, rowOpExentas, rowOtrosTributos, 
+							rowIVA, rowTotal]
+						},
+						className: "btn btn-defaut btn-sm sinborde",
+						title: "Mis Comprobantes Emitidos - CUIT 20343558067",
+						filename: "Mis Comprobantes Emitidos - CUIT 20343558067"
+					});
+
+					tablaDataTablesConfig.buttons.push({
+						extend: "pdf",
+						text: "PDF",
+						orientation: "landscape",
+						exportOptions: {
+							columns: [rowFecha, rowTipo, rowNumero, rowCodAutorizacionStyled, rowDocReceptor, rowDenominacionReceptor, 
+							rowNetoGravadoStyled, rowNetoNoGravadoStyled, rowOpExentasStyled, rowOtrosTributosStyled, rowIVAStyled, rowTotalStyled]
+						},
+						className: "btn btn-defaut btn-sm sinborde",
+						title: "Mis Comprobantes Emitidos - CUIT 20343558067",
+						filename: "Mis Comprobantes Emitidos - CUIT 20343558067"
+					});
+
+					tablaDataTablesConfig.dom = 
+						"<'row'<'col-sm-5'B>'<'col-sm-3'l><'col-sm-4'f>>" +
+						"<'row'<'col-sm-12'tr>>" +
+						"<'row'<'col-sm-5'i><'col-sm-7'p>>";
+
+					tablaDataTablesConfig.ajax.data = function(d) {
+						d.f = "listaResultados";
+						d.id = idConsulta;
+					};
+				} else {
+					tablaDataTablesConfig.dom = 
+						"<'row'<'col-sm-5'B>'<'col-sm-3'l><'col-sm-4'>>" +
+						"<'row'<'col-sm-12'tr>>" +
+						"<'row'<'col-sm-5'i><'col-sm-7'p>>";
+
+					tablaDataTablesConfig.ajax.data = function(d) {
+						delete d.columns;
+						d.f = "listaResultados";
+						d.id = idConsulta;
+					};
+				}
+
+				tablaResultados = $('#tablaDataTables').DataTable(tablaDataTablesConfig);
+				
+				return false;
+			}
+			
+			$("#tabsComprobantes").on("click", "#linkTabHistorial", function() {
+				actualizarHistorialConsultasAjax("E");				
+			});
+			
+			$("#tablaHistorialConsultas").on("click", ".btnVerResultadoHistorico", function() {
+				var idConsulta = $(this).closest("tr").data("idConsulta");
+				cargarResultados(idConsulta);
+				return false;
+			});
+			
+			$("#tablaHistorialConsultas").on("click", ".btnExportar", function() {
+				var idConsulta = $(this).closest("tr").data("idConsulta");
+				var tipoExpo = $(this).data("tipoExpo");
+				exportarResultados(idConsulta, tipoExpo);
+				return false;
+			});
+			
+			function exportarResultados(idConsulta, tipoExpoFormato) {
+				window.location.href = "descargarComprobantes.do?id="+idConsulta+"&tc=E&tf="+tipoExpoFormato;
+				$.noticeAdd({text:"Descargando Archivo.", type:"notice-ok", timeout:10000});
+			}
+			
+			$("#actualizarHistorial").click(function() {
+				$("#actualizarHistorial").prop("disabled", true);
+				//$("#actualizarHistorial").hide();
+				try {
+					window.scroll({
+						top: 0,
+						behavior: 'smooth'
+					});
+				} catch (e) {
+					//console.log("No funciona el scroll :(");
+				}
+				actualizarHistorialConsultasAjax("E");
+				setTimeout('$("#actualizarHistorial").prop("disabled", false);', 1000);
+				//setTimeout('$("#actualizarHistorial").fadeIn();', 2000);
+				return false;
+			});
+			
+			$("#listaTipoDocReceptor li a").click(function() {
+				$("#textoTipoDocReceptor").text($(this).text());
+				$("#btnTipoDocReceptor").dropdown("toggle");
+				return false;
+			});
+			
+			/*$("#listaTipoCodAutorizacion li a").click(function() {
+				$("#textoTipoCodAutorizacion").text($(this).text());
+				$("#btnTipoCodAutorizacion").dropdown("toggle");
+				return false;
+			});*/
+			
+			$(function () {
+				$('[data-toggle="popover"]').popover();
+			});
+			
+			$('#btnCalendarioFechaEmision').click(function() {
+				ocultarError(this);
+				$("#fechaEmision").focus();
+			});
+			
+			
+			
+			
+			var configFechas = new Object();
+			configFechas.fechaHoy = "12/06/2026";
+			configFechas.fechaMaxima = "22/06/2026";
+			configFechas.fechaAyer = "11/06/2026";
+			configFechas.fechaMenos6 = "06/06/2026";
+			configFechas.fechaMenos14 = "29/05/2026";
+			configFechas.fechaMenos29 = "14/05/2026";
+			configFechas.fechaEsteMesInicio = "01/06/2026";
+			configFechas.fechaMesPasadoInicio = "01/05/2026";
+			configFechas.fechaMesPasadoFin = "31/05/2026";
+			configFechas.fechaEsteAnioInicio = "01/01/2026";
+			configFechas.fechaAnioPasadoInicio = "01/01/2025";
+			configFechas.fechaAnioPasadoFin = "31/12/2025";
+			
+			configurarDateRangePicker('#fechaEmision', configFechas, RangoMaximoFechas.ANIO);
+			
+		/***************************************************************************/
+		});
+	</script>
+
+<!-- Pie específico (fin) -->
+
+
+<span style="position:absolute; top:-999px; left:0; white-space:pre;"></span><div class="daterangepicker dropdown-menu ltr show-calendar openscenter"><div class="calendar left"><div class="daterangepicker_input"><input class="input-mini form-control" type="text" name="daterangepicker_start" value=""><i class="fa fa-calendar glyphicon glyphicon-calendar"></i><div class="calendar-time" style="display: none;"><div></div><i class="fa fa-clock-o glyphicon glyphicon-time"></i></div></div><div class="calendar-table"></div></div><div class="calendar right"><div class="daterangepicker_input"><input class="input-mini form-control" type="text" name="daterangepicker_end" value=""><i class="fa fa-calendar glyphicon glyphicon-calendar"></i><div class="calendar-time" style="display: none;"><div></div><i class="fa fa-clock-o glyphicon glyphicon-time"></i></div></div><div class="calendar-table"></div></div><div class="ranges"><ul><li data-range-key="Ayer">Ayer</li><li data-range-key="Últimos 7 Días">Últimos 7 Días</li><li data-range-key="Últimos 15 Días">Últimos 15 Días</li><li data-range-key="Últimos 30 Días">Últimos 30 Días</li><li data-range-key="Este Mes">Este Mes</li><li data-range-key="Mes Pasado">Mes Pasado</li><li data-range-key="Este Año">Este Año</li><li data-range-key="Año Pasado">Año Pasado</li><li data-range-key="Rango Personalizado">Rango Personalizado</li></ul><div class="range_inputs"><button class="applyBtn btn btn-sm btn-success" disabled="disabled" type="button">Aplicar</button> <button class="cancelBtn btn btn-sm btn-default" type="button">Cancelar</button></div></div></div></body></html>
