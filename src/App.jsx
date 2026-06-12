@@ -1,22 +1,62 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, Receipt, Settings, Bell, Search, Plus, Upload } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, Bell, Search, Plus, Upload, ShieldCheck, LogOut } from 'lucide-react';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 import TicketsView from './components/TicketsView';
+import LoginView from './components/LoginView';
+import UsuariosView from './components/UsuariosView';
 import './App.css';
 
 function App() {
+  const [loggedUser, setLoggedUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const renderContent = () => {
-    switch(activeTab) {
-      case 'dashboard': return <DashboardView />;
-      case 'clientes': return <ClientesView />;
-      case 'tickets': return <TicketsView />;
-      case 'config': return <div className="content-area"><h1 className="page-title">Configuración</h1><p className="page-subtitle">Ajustes del sistema (En construcción)</p></div>;
-      default: return <DashboardView />;
-    }
+  const handleLogout = () => {
+    setLoggedUser(null);
+    setActiveTab('dashboard');
   };
+
+  // Verificamos si el usuario tiene permiso para ver una pestaña
+  const hasAccess = (tab) => {
+    if (!loggedUser) return false;
+    if (loggedUser.role === 'superadmin') return true;
+    if (tab === 'usuarios') return false; // Solo superadmin
+    return loggedUser.permisos && loggedUser.permisos.includes(tab);
+  };
+
+  const renderContent = () => {
+    if (activeTab === 'usuarios' && hasAccess('usuarios')) return <UsuariosView />;
+    if (activeTab === 'dashboard' && hasAccess('dashboard')) return <DashboardView />;
+    if (activeTab === 'clientes' && hasAccess('clientes')) return <ClientesView />;
+    if (activeTab === 'tickets' && hasAccess('tickets')) return <TicketsView />;
+    
+    // Fallback si no tiene acceso a la pestaña actual o no existe
+    return (
+      <div className="content-area" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+          <ShieldCheck size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+          <h2>Acceso Restringido</h2>
+          <p>No tienes privilegios para ver esta sección.</p>
+        </div>
+      </div>
+    );
+  };
+
+  if (!loggedUser) {
+    return <LoginView onLoginSuccess={(user) => {
+      setLoggedUser(user);
+      // Redirigir a la primera pestaña que tenga permiso
+      if (user.role === 'superadmin' || (user.permisos && user.permisos.includes('dashboard'))) {
+        setActiveTab('dashboard');
+      } else if (user.permisos && user.permisos.includes('clientes')) {
+        setActiveTab('clientes');
+      } else if (user.permisos && user.permisos.includes('tickets')) {
+        setActiveTab('tickets');
+      }
+    }} />;
+  }
+
+  const avatarLetters = loggedUser.username ? loggedUser.username.substring(0, 2).toUpperCase() : 'US';
 
   return (
     <div className="app-container">
@@ -30,31 +70,57 @@ function App() {
         </div>
         
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </button>
-          <button className={`nav-item ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
-            <Users size={20} />
-            <span>Clientes</span>
-          </button>
-          <button className={`nav-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}>
-            <Upload size={20} />
-            <span>Carga de Tickets</span>
-          </button>
-          <button className={`nav-item ${activeTab === 'config' ? 'active' : ''}`} onClick={() => setActiveTab('config')}>
-            <Settings size={20} />
-            <span>Configuración</span>
-          </button>
+          {hasAccess('dashboard') && (
+            <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+              <LayoutDashboard size={20} />
+              <span>Libro IVA</span>
+            </button>
+          )}
+
+          {hasAccess('clientes') && (
+            <button className={`nav-item ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <Users size={20} />
+              <span>Clientes & Robot</span>
+            </button>
+          )}
+
+          {hasAccess('tickets') && (
+            <button className={`nav-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}>
+              <Upload size={20} />
+              <span>Carga de Tickets</span>
+            </button>
+          )}
+
+          {/* Menú exclusivo del Súper Administrador */}
+          {hasAccess('usuarios') && (
+            <>
+              <div style={{ marginTop: '2rem', marginBottom: '0.5rem', padding: '0 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Administración
+              </div>
+              <button className={`nav-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
+                <ShieldCheck size={20} />
+                <span>Usuarios</span>
+              </button>
+            </>
+          )}
         </nav>
         
         <div className="sidebar-footer">
-          <div className="user-profile">
-            <div className="avatar">CB</div>
-            <div className="user-info">
-              <p className="user-name">Carlos B.</p>
-              <p className="user-role">Contador Admin</p>
+          <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="avatar" style={{ background: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--primary)' }}>
+                <span style={{ color: loggedUser.role === 'superadmin' ? '#000' : '#fff' }}>{avatarLetters}</span>
+              </div>
+              <div className="user-info">
+                <p className="user-name">{loggedUser.username}</p>
+                <p className="user-role" style={{ color: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--text-muted)' }}>
+                  {loggedUser.role === 'superadmin' ? 'Súper Admin' : 'Empleado'}
+                </p>
+              </div>
             </div>
+            <button className="icon-btn" onClick={handleLogout} title="Cerrar Sesión">
+              <LogOut size={18} className="danger-text" />
+            </button>
           </div>
         </div>
       </aside>
@@ -72,10 +138,12 @@ function App() {
               <Bell size={20} />
               <span className="badge">3</span>
             </button>
-            <button className="btn btn-primary" onClick={() => setActiveTab('clientes')}>
-              <Plus size={18} />
-              <span>Nuevo Cliente</span>
-            </button>
+            {hasAccess('clientes') && (
+              <button className="btn btn-primary" onClick={() => setActiveTab('clientes')}>
+                <Plus size={18} />
+                <span>Nuevo Cliente</span>
+              </button>
+            )}
           </div>
         </header>
 
