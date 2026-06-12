@@ -53,10 +53,17 @@ app.post('/api/sync-afip', async (req, res) => {
     console.log(`[BOT] RANGO DE FECHAS: ${fechaAfip || 'Por defecto de AFIP'}`);
     console.log(`==============================================`);
     
+    const isProduction = process.env.NODE_ENV === 'production';
     browser = await puppeteer.launch({ 
-      headless: false, 
+      headless: isProduction ? 'new' : false, 
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
       defaultViewport: null,
-      args: ['--start-minimized'] // Mantiene el navegador oculto en la barra de tareas
+      args: isProduction ? [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ] : ['--start-minimized'] 
     });
     const page = await browser.newPage();
     
@@ -317,7 +324,7 @@ app.post('/api/sync-afip', async (req, res) => {
   }
 });
 
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`🤖 Robot AFIP Extractor corriendo en http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🤖 Robot AFIP Extractor corriendo en el puerto ${PORT}`);
 });
