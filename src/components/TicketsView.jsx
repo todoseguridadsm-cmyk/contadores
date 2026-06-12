@@ -63,6 +63,30 @@ export default function TicketsView() {
         const result = await response.json();
 
         if (response.ok && result.success) {
+          
+          // Guardar automáticamente en Supabase
+          const fechaDb = new Date().toISOString().split('T')[0];
+          
+          const { error: dbError } = await supabase.from('comprobantes').insert([{
+            cliente_id: nf.clienteId,
+            tipo: 'recibido', // Todos los tickets son gastos/compras
+            fecha: fechaDb,
+            punto_venta: '00001', // Valor por defecto para tickets mock
+            numero: Math.floor(Math.random() * 100000).toString().padStart(8, '0'),
+            tipo_comprobante: '006', // 006 es Factura B (Consumidor Final)
+            razon_social_emisor: result.data.razon_social,
+            cuit_emisor: result.data.cuit_emisor.replace(/\D/g, ''),
+            neto_gravado: result.data.neto,
+            no_gravado: 0,
+            exento: 0,
+            iva: result.data.iva,
+            total: result.data.total,
+            neto21: result.data.neto, // Asumimos 21% por defecto en tickets YPF
+            iva21: result.data.iva
+          }]);
+
+          if (dbError) throw new Error("Error guardando en BD: " + dbError.message);
+
           setUploadedFiles(prev => prev.map(f => {
             if (f.id === nf.id) {
               return { 
