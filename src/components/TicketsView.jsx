@@ -136,22 +136,13 @@ export default function TicketsView() {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
   };
 
-  const handleExportTxt = () => {
-    const completados = uploadedFiles.filter(f => f.status === 'Completado');
-    exportarTicketsTxtAFIP(completados);
-  };
-
   return (
     <div className="content-area">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Carga Inteligente de Tickets</h1>
-          <p className="page-subtitle">Asigna tickets de papel a tus clientes. La Inteligencia Artificial extraerá el IVA automáticamente.</p>
+          <p className="page-subtitle">Asigna tickets de papel a tus clientes. La Inteligencia Artificial extraerá el IVA automáticamente y los sumará al Libro IVA.</p>
         </div>
-        <button className="btn btn-secondary" onClick={handleExportTxt} disabled={uploadedFiles.filter(f => f.status === 'Completado').length === 0}>
-          <FileText size={18} style={{ marginRight: '6px' }} />
-          Generar TXT (Libro IVA)
-        </button>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
