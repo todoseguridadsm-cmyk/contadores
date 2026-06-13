@@ -407,7 +407,7 @@ app.post('/api/backup', async (req, res) => {
       secure: true,
       auth: {
         user: 'sistemacontadorpro@gmail.com',
-        pass: 'robotcontadorespro2026'
+        pass: 'taszlrasjsnfzbde'
       }
     });
 
