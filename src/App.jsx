@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, Receipt, Settings, Bell, Search, Plus, Upload, ShieldCheck, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut } from 'lucide-react';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 import TicketsView from './components/TicketsView';
@@ -11,10 +11,40 @@ function App() {
   const [loggedUser, setLoggedUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setLoggedUser(null);
     setActiveTab('dashboard');
-  };
+  }, []);
+
+  // Auto-cierre de sesión a los 7 minutos de inactividad
+  useEffect(() => {
+    if (!loggedUser) return;
+
+    let timeoutId;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleLogout();
+        alert('Tu sesión ha expirado por inactividad (7 minutos). Vuelve a ingresar para continuar.');
+      }, 7 * 60 * 1000); // 7 minutos en milisegundos
+    };
+
+    // Escuchar eventos de actividad del usuario
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    window.addEventListener('click', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+
+    resetTimer(); // Iniciar el contador apenas se loguea
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+    };
+  }, [loggedUser, handleLogout]);
 
   // Verificamos si el usuario tiene permiso para ver una pestaña
   const hasAccess = (tab) => {
@@ -134,10 +164,6 @@ function App() {
             <input type="text" placeholder="Buscar cliente, cuit o comprobante..." className="input-field search-input" />
           </div>
           <div className="header-actions">
-            <button className="icon-btn">
-              <Bell size={20} />
-              <span className="badge">3</span>
-            </button>
             {hasAccess('clientes') && (
               <button className="btn btn-primary" onClick={() => setActiveTab('clientes')}>
                 <Plus size={18} />
