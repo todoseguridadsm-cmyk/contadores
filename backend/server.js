@@ -400,9 +400,11 @@ app.post('/api/backup', async (req, res) => {
     // 2. Prepare JSON files
     const clientesJSON = JSON.stringify(clientes, null, 2);
 
-    // 3. Setup Nodemailer
+    // 3. Setup Nodemailer (Forzando conexión explícita para evitar error IPv6 ENETUNREACH de Render)
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: 'sistemacontadorpro@gmail.com',
         pass: 'robotcontadorespro2026'
