@@ -6,11 +6,15 @@ const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws');
 
 // Configuración de Supabase para lectura de la Base de Datos
 const supabaseUrl = process.env.SUPABASE_URL || 'https://lbfkvwkmnanljfnzdaay.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZmt2d2ttbmFubGpmbnpkYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTgzMjYsImV4cCI6MjA5Njc5NDMyNn0.j8Z-5Jynqj4SX9KUK1LVvC0H2QfKDgBLBxBb_69zvqA';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { persistSession: false },
+  realtime: { transport: WebSocket }
+});
 
 const app = express();
 app.use(cors());
