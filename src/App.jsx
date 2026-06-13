@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut, Database } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut, Database, Bell } from 'lucide-react';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 import TicketsView from './components/TicketsView';
 import LoginView from './components/LoginView';
 import UsuariosView from './components/UsuariosView';
 import BackupView from './components/BackupView';
+import BandejaView from './components/BandejaView';
+import { supabase } from './lib/supabase';
 import './App.css';
 
 function App() {
   const [loggedUser, setLoggedUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = useCallback(() => {
     setLoggedUser(null);
@@ -47,11 +50,36 @@ function App() {
     };
   }, [loggedUser, handleLogout]);
 
+  // Obtener conteo de mensajes no leídos de AFIP
+  useEffect(() => {
+    if (!loggedUser) return;
+    const fetchUnread = async () => {
+      try {
+        if (!import.meta.env.VITE_SUPABASE_URL) return;
+        const { data, error } = await supabase.from('clientes').select('ventas_json');
+        if (error) return;
+        let count = 0;
+        if(data) {
+          data.forEach(c => {
+            if (c.ventas_json && c.ventas_json.notificaciones) {
+              count += c.ventas_json.notificaciones.filter(n => !n.leido).length;
+            }
+          });
+        }
+        setUnreadCount(count);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchUnread();
+  }, [loggedUser, activeTab]); // Se refresca cuando el usuario cambia de pestaña
+
   // Verificamos si el usuario tiene permiso para ver una pestaña
   const hasAccess = (tab) => {
     if (!loggedUser) return false;
     if (loggedUser.role === 'superadmin') return true;
-    if (tab === 'usuarios') return false; // Solo superadmin
+    if (tab === 'usuarios' || tab === 'backup') return false; // Solo superadmin
+    if (tab === 'bandeja') return true; // Todos pueden ver la bandeja
     return loggedUser.permisos && loggedUser.permisos.includes(tab);
   };
 
@@ -61,6 +89,7 @@ function App() {
     if (activeTab === 'clientes' && hasAccess('clientes')) return <ClientesView />;
     if (activeTab === 'tickets' && hasAccess('tickets')) return <TicketsView />;
     if (activeTab === 'backup' && hasAccess('backup')) return <BackupView />;
+    if (activeTab === 'bandeja' && hasAccess('bandeja')) return <BandejaView />;
     
     // Fallback si no tiene acceso a la pestaña actual o no existe
     return (
@@ -106,6 +135,20 @@ function App() {
             <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
               <LayoutDashboard size={20} />
               <span>Libro IVA</span>
+            </button>
+          )}
+
+          {hasAccess('bandeja') && (
+            <button className={`nav-item ${activeTab === 'bandeja' ? 'active' : ''}`} onClick={() => setActiveTab('bandeja')} style={{ justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Bell size={20} />
+                <span>Bandeja AFIP</span>
+              </div>
+              {unreadCount > 0 && (
+                <span style={{ background: 'var(--danger)', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                  {unreadCount}
+                </span>
+              )}
             </button>
           )}
 
