@@ -5,10 +5,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const dns = require('dns');
+const { Resend } = require('resend');
 
 // Solución definitiva para el error ENETUNREACH en Render (Forzar a usar IPv4 en lugar de IPv6)
 dns.setDefaultResultOrder('ipv4first');
-const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const WebSocket = require('ws');
 
@@ -404,21 +404,12 @@ app.post('/api/backup', async (req, res) => {
     // 2. Prepare JSON files
     const clientesJSON = JSON.stringify(clientes, null, 2);
 
-    // 3. Setup Nodemailer (Forzando conexión explícita para evitar error IPv6 ENETUNREACH de Render)
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      family: 4, // Fuerza estrictamente el uso de IPv4 a nivel de Sockets
-      auth: {
-        user: 'sistemacontadorpro@gmail.com',
-        pass: 'taszlrasjsnfzbde'
-      }
-    });
+    // 3. Setup Resend API
+    const resend = new Resend('re_JFjZKgsh_3CDwpMNYrcGLJ8kVd79s7aEd');
 
-    // 4. Send Email
-    const mailOptions = {
-      from: '"Sistema ContadoresPro" <sistemacontadorpro@gmail.com>',
+    // 4. Send Email via Resend
+    const { data, error } = await resend.emails.send({
+      from: 'Sistema ContadoresPro <onboarding@resend.dev>',
       to: emailDestino,
       subject: `Respaldo de Base de Datos - ${new Date().toLocaleDateString('es-AR')}`,
       html: `
@@ -436,15 +427,18 @@ app.post('/api/backup', async (req, res) => {
       attachments: [
         {
           filename: 'backup_completo_clientes.json',
-          content: clientesJSON
+          content: Buffer.from(clientesJSON).toString('base64')
         }
       ]
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('[BACKUP] Correo enviado exitosamente: ' + info.messageId);
+    if (error) {
+      throw new Error(error.message);
+    }
 
-    res.json({ success: true, message: 'Backup enviado exitosamente.' });
+    console.log('[BACKUP] Correo enviado exitosamente vía Resend: ' + data.id);
+
+    res.json({ success: true, message: 'Backup enviado exitosamente vía Resend.' });
   } catch (error) {
     console.error('[BACKUP] Error en el proceso:', error);
     res.status(500).json({ error: error.message || 'Error interno del servidor al procesar el respaldo.' });
