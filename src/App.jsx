@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut, Database } from 'lucide-react';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 import TicketsView from './components/TicketsView';
 import LoginView from './components/LoginView';
 import UsuariosView from './components/UsuariosView';
+import BackupView from './components/BackupView';
 import './App.css';
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
     if (activeTab === 'dashboard' && hasAccess('dashboard')) return <DashboardView />;
     if (activeTab === 'clientes' && hasAccess('clientes')) return <ClientesView />;
     if (activeTab === 'tickets' && hasAccess('tickets')) return <TicketsView />;
+    if (activeTab === 'backup' && hasAccess('backup')) return <BackupView />;
     
     // Fallback si no tiene acceso a la pestaña actual o no existe
     return (
@@ -125,11 +127,15 @@ function App() {
           {hasAccess('usuarios') && (
             <>
               <div style={{ marginTop: '2rem', marginBottom: '0.5rem', padding: '0 1.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Administración
+                Administración & Seguridad
               </div>
               <button className={`nav-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => setActiveTab('usuarios')}>
                 <ShieldCheck size={20} />
                 <span>Usuarios</span>
+              </button>
+              <button className={`nav-item ${activeTab === 'backup' ? 'active' : ''}`} onClick={() => setActiveTab('backup')}>
+                <Database size={20} />
+                <span>Backups (Respaldo)</span>
               </button>
             </>
           )}

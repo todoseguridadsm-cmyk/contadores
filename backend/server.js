@@ -4,6 +4,13 @@ const puppeteer = require('puppeteer');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
+const { createClient } = require('@supabase/supabase-js');
+
+// Configuración de Supabase para lectura de la Base de Datos
+const supabaseUrl = process.env.SUPABASE_URL || 'https://lbfkvwkmnanljfnzdaay.supabase.co';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZmt2d2ttbmFubGpmbnpkYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMTgzMjYsImV4cCI6MjA5Njc5NDMyNn0.j8Z-5Jynqj4SX9KUK1LVvC0H2QfKDgBLBxBb_69zvqA';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(cors());
@@ -370,6 +377,74 @@ app.post('/api/sync-afip', async (req, res) => {
     console.error('[BOT] Error durante la extracción:', error);
     if (browser) await browser.close();
     res.status(500).json({ error: 'Fallo al sincronizar. Error: ' + error.message });
+  }
+});
+
+app.post('/api/backup', async (req, res) => {
+  const { emailDestino } = req.body;
+  if (!emailDestino || !emailDestino.includes('@')) {
+    return res.status(400).json({ error: 'Falta un correo de destino válido.' });
+  }
+
+  try {
+    console.log(`[BACKUP] Iniciando extracción de base de datos para: ${emailDestino}`);
+    
+    // 1. Fetch Data
+    const { data: tickets, error: errTickets } = await supabase.from('tickets').select('*');
+    if (errTickets) throw new Error('Error al extraer tickets: ' + errTickets.message);
+
+    const { data: clientes, error: errClientes } = await supabase.from('clientes').select('*');
+    if (errClientes) throw new Error('Error al extraer clientes: ' + errClientes.message);
+
+    // 2. Prepare JSON files
+    const ticketsJSON = JSON.stringify(tickets, null, 2);
+    const clientesJSON = JSON.stringify(clientes, null, 2);
+
+    // 3. Setup Nodemailer
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'sistemacontadorpro@gmail.com',
+        pass: 'robotcontadorespro2026'
+      }
+    });
+
+    // 4. Send Email
+    const mailOptions = {
+      from: '"Sistema ContadoresPro" <sistemacontadorpro@gmail.com>',
+      to: emailDestino,
+      subject: `Respaldo de Base de Datos - ${new Date().toLocaleDateString('es-AR')}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h2 style="color: #0ea5e9;">Respaldo Automático Generado</h2>
+          <p>Hola,</p>
+          <p>Adjunto encontrarás el respaldo de seguridad de la base de datos solicitado el día <strong>${new Date().toLocaleString('es-AR')}</strong>.</p>
+          <ul>
+            <li><strong>Total de Tickets exportados:</strong> ${tickets ? tickets.length : 0}</li>
+            <li><strong>Total de Clientes exportados:</strong> ${clientes ? clientes.length : 0}</li>
+          </ul>
+          <p style="color: #64748b; font-size: 12px; margin-top: 30px;">Este es un mensaje automático generado por tu servidor Render. Por favor no respondas a este correo.</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: 'backup_tickets.json',
+          content: ticketsJSON
+        },
+        {
+          filename: 'backup_clientes.json',
+          content: clientesJSON
+        }
+      ]
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('[BACKUP] Correo enviado exitosamente: ' + info.messageId);
+
+    res.json({ success: true, message: 'Backup enviado exitosamente.' });
+  } catch (error) {
+    console.error('[BACKUP] Error en el proceso:', error);
+    res.status(500).json({ error: error.message || 'Error interno del servidor al procesar el respaldo.' });
   }
 });
 
