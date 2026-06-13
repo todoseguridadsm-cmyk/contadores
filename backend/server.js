@@ -12,6 +12,7 @@ app.use(express.json());
 const axios = require('axios');
 const FormData = require('form-data');
 require('dotenv').config();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -19,66 +20,63 @@ app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => 
   if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
   
   try {
-    console.log("Iniciando escaneo OCR con OCR.Space...");
+    console.log("Iniciando escaneo visual inteligente con Gemini...");
     
-    const form = new FormData();
-    form.append('apikey', 'helloworld'); // Clave pública gratuita
-    form.append('language', 'spa');
-    form.append('isTable', 'true'); // Mejora la lectura de tickets térmicos
-    form.append('file', req.file.buffer, { filename: req.file.originalname || 'ticket.jpg' });
-
-    const response = await axios.post('https://api.ocr.space/parse/image', form, {
-      headers: form.getHeaders()
-    });
-
-    if (!response.data.ParsedResults || response.data.ParsedResults.length === 0) {
-      throw new Error("No se pudo extraer texto de la imagen.");
+    // Check for API Key
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("No se ha configurado la API Key de Gemini en el servidor (Render).");
     }
 
-    const text = response.data.ParsedResults[0].ParsedText;
-    console.log("Texto extraído por OCR.Space:\n", text);
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    // Búsqueda de CUIT
-    const cuitMatch = text.match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d{1}\b/);
-    const cuit = cuitMatch ? cuitMatch[0].replace(/-/g, '') : '';
+    const prompt = `Analiza este ticket/factura y extrae los siguientes datos en formato JSON estricto:
+- "cuit_emisor": El CUIT de la empresa emisora (solo números, sin guiones).
+- "razon_social": El nombre de la empresa emisora.
+- "fecha": La fecha del comprobante en formato DD/MM/YYYY.
+- "neto": El importe neto gravado (como número, sin símbolos).
+- "iva": El importe del IVA (como número).
+- "total": El monto total del comprobante (como número).
+- "categoria": Sugiere una categoría (ej. Combustible, Supermercado, Gastos Generales).
 
-    // Búsqueda de Fecha
-    const fechaMatch = text.match(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/);
-    const fecha = fechaMatch ? fechaMatch[0].replace(/-/g, '/') : new Date().toLocaleDateString('es-AR');
+Responde ÚNICAMENTE con el objeto JSON, sin formato markdown ni texto adicional.`;
 
-    // Búsqueda de Montos
-    const montos = text.match(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b/g) || [];
-    let total = 0;
+    const imageParts = [
+      {
+        inlineData: {
+          data: req.file.buffer.toString("base64"),
+          mimeType: req.file.mimetype
+        }
+      }
+    ];
+
+    const result = await model.generateContent([prompt, ...imageParts]);
+    let textResponse = result.response.text();
     
-    if (montos.length > 0) {
-      const montosNumericos = montos.map(m => {
-        const str = m.replace(/[.,](?=\d{2}$)/, '@').replace(/[.,]/g, '').replace('@', '.');
-        return parseFloat(str);
-      });
-      total = Math.max(...montosNumericos);
-    }
+    // Limpiar posible formato markdown (ej: ```json ... ```)
+    textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    if (total > 10000000 || isNaN(total)) total = 0;
-
-    const neto = (total / 1.21).toFixed(2);
-    const iva = (total - neto).toFixed(2);
+    console.log("Respuesta cruda de Gemini:\n", textResponse);
+    
+    const parsedData = JSON.parse(textResponse);
 
     res.json({
       success: true,
       data: {
-        cuit_emisor: cuit,
-        razon_social: cuit ? 'Local Detectado (Revisar)' : 'No detectado',
-        fecha: fecha,
-        neto: parseFloat(neto),
-        iva: parseFloat(iva),
-        total: total,
-        categoria: 'Gastos Generales'
+        cuit_emisor: parsedData.cuit_emisor || '',
+        razon_social: parsedData.razon_social || 'Comercio Detectado',
+        fecha: parsedData.fecha || new Date().toLocaleDateString('es-AR'),
+        neto: parseFloat(parsedData.neto) || 0,
+        iva: parseFloat(parsedData.iva) || 0,
+        total: parseFloat(parsedData.total) || 0,
+        categoria: parsedData.categoria || 'Gastos Generales'
       }
     });
 
   } catch (err) {
-    console.error("Error OCR Space:", err.response ? err.response.data : err.message);
-    res.status(500).json({ error: 'Fallo al analizar la imagen con IA.' });
+    console.error("Error Inteligencia Artificial Gemini:", err.response ? err.response.data : err.message);
+    res.status(500).json({ error: 'Fallo al analizar la imagen con IA de Google.' });
   }
 });
 
