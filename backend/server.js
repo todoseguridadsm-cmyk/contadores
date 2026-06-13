@@ -393,15 +393,11 @@ app.post('/api/backup', async (req, res) => {
   try {
     console.log(`[BACKUP] Iniciando extracción de base de datos para: ${emailDestino}`);
     
-    // 1. Fetch Data
-    const { data: tickets, error: errTickets } = await supabase.from('comprobantes').select('*');
-    if (errTickets) throw new Error('Error al extraer tickets: ' + errTickets.message);
-
+    // 1. Fetch Data (La tabla 'comprobantes' no existe, todo está anidado en 'clientes')
     const { data: clientes, error: errClientes } = await supabase.from('clientes').select('*');
     if (errClientes) throw new Error('Error al extraer clientes: ' + errClientes.message);
 
     // 2. Prepare JSON files
-    const ticketsJSON = JSON.stringify(tickets, null, 2);
     const clientesJSON = JSON.stringify(clientes, null, 2);
 
     // 3. Setup Nodemailer
@@ -422,9 +418,9 @@ app.post('/api/backup', async (req, res) => {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
           <h2 style="color: #0ea5e9;">Respaldo Automático Generado</h2>
           <p>Hola,</p>
-          <p>Adjunto encontrarás el respaldo de seguridad de la base de datos solicitado el día <strong>${new Date().toLocaleString('es-AR')}</strong>.</p>
+          <p>Adjunto encontrarás el respaldo de seguridad completo solicitado el día <strong>${new Date().toLocaleString('es-AR')}</strong>.</p>
+          <p>La base de datos de Clientes contiene toda la información de ventas, compras, totales y comprobantes (tickets) almacenados.</p>
           <ul>
-            <li><strong>Total de Tickets exportados:</strong> ${tickets ? tickets.length : 0}</li>
             <li><strong>Total de Clientes exportados:</strong> ${clientes ? clientes.length : 0}</li>
           </ul>
           <p style="color: #64748b; font-size: 12px; margin-top: 30px;">Este es un mensaje automático generado por tu servidor Render. Por favor no respondas a este correo.</p>
@@ -432,11 +428,7 @@ app.post('/api/backup', async (req, res) => {
       `,
       attachments: [
         {
-          filename: 'backup_tickets.json',
-          content: ticketsJSON
-        },
-        {
-          filename: 'backup_clientes.json',
+          filename: 'backup_completo_clientes.json',
           content: clientesJSON
         }
       ]
