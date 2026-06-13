@@ -394,7 +394,7 @@ app.post('/api/backup', async (req, res) => {
     console.log(`[BACKUP] Iniciando extracción de base de datos para: ${emailDestino}`);
     
     // 1. Fetch Data
-    const { data: tickets, error: errTickets } = await supabase.from('tickets').select('*');
+    const { data: tickets, error: errTickets } = await supabase.from('comprobantes').select('*');
     if (errTickets) throw new Error('Error al extraer tickets: ' + errTickets.message);
 
     const { data: clientes, error: errClientes } = await supabase.from('clientes').select('*');
