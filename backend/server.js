@@ -9,58 +9,78 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const Tesseract = require('tesseract.js');
+const axios = require('axios');
+const FormData = require('form-data');
+require('dotenv').config();
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
   
   try {
-    console.log("Iniciando escaneo OCR con Tesseract...");
-    const { data: { text } } = await Tesseract.recognize(
-      req.file.buffer,
-      'spa'
+    console.log("Iniciando escaneo OCR con la IA de Mindee...");
+    
+    const form = new FormData();
+    form.append('document', req.file.buffer, req.file.originalname || 'ticket.jpg');
+
+    const response = await axios.post(
+      'https://api.mindee.net/v1/products/mindee/expense_receipts/v5/predict',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'Authorization': `Token ${process.env.MINDEE_API_KEY}`
+        }
+      }
     );
 
-    console.log("Texto extraído:\n", text);
+    const prediction = response.data.document.inference.prediction;
 
-    const cuitMatch = text.match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d{1}\b/);
-    const cuit = cuitMatch ? cuitMatch[0].replace(/-/g, '') : '';
-
-    const fechaMatch = text.match(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/);
-    const fecha = fechaMatch ? fechaMatch[0].replace(/-/g, '/') : new Date().toLocaleDateString('es-AR');
-
-    const montos = text.match(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b/g) || [];
-    let total = 0;
-    
-    if (montos.length > 0) {
-      const montosNumericos = montos.map(m => {
-        const str = m.replace(/[.,](?=\d{2}$)/, '@').replace(/[.,]/g, '').replace('@', '.');
-        return parseFloat(str);
-      });
-      total = Math.max(...montosNumericos);
+    // Extracción de CUIT
+    let cuit = '';
+    if (prediction.supplier_company_registrations && prediction.supplier_company_registrations.length > 0) {
+      cuit = prediction.supplier_company_registrations[0].value.replace(/\D/g, '');
     }
-    
-    if (total > 10000000 || isNaN(total)) total = 0;
 
-    const neto = (total / 1.21).toFixed(2);
-    const iva = (total - neto).toFixed(2);
+    // Extracción de Fecha
+    let fecha = new Date().toLocaleDateString('es-AR');
+    if (prediction.date && prediction.date.value) {
+      const [y, m, d] = prediction.date.value.split('-');
+      fecha = `${d}/${m}/${y}`;
+    }
+
+    // Extracción de Total
+    const total = prediction.total_amount?.value || 0;
+
+    // Extracción de IVA (Mindee devuelve array de taxes)
+    let iva = 0;
+    if (prediction.taxes && prediction.taxes.length > 0) {
+      iva = prediction.taxes.reduce((acc, t) => acc + (t.value || 0), 0);
+    } else {
+      iva = total - (total / 1.21); // Si no encuentra IVA, asume 21%
+    }
+
+    const neto = (total - iva).toFixed(2);
+    const razonSocial = prediction.supplier_name?.value || 'Comercio No Detectado';
+
+    console.log(`[Mindee] Ticket leído: ${razonSocial} | Total: ${total} | IVA: ${iva}`);
 
     res.json({
       success: true,
       data: {
         cuit_emisor: cuit,
-        razon_social: cuit ? 'Local Detectado (Autocompletar)' : 'No detectado',
+        razon_social: razonSocial,
         fecha: fecha,
         neto: parseFloat(neto),
-        iva: parseFloat(iva),
+        iva: parseFloat(iva.toFixed(2)),
         total: total,
-        categoria: 'Gastos Generales'
+        categoria: prediction.category?.value || 'Gastos Generales'
       }
     });
 
   } catch (err) {
-    console.error("Error OCR:", err);
+    console.error("Error OCR Mindee:", err.response ? err.response.data : err.message);
     res.status(500).json({ error: 'Fallo al analizar la imagen con IA.' });
   }
 });
