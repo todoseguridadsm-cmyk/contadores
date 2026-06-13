@@ -9,26 +9,60 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const Tesseract = require('tesseract.js');
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
-  await new Promise(r => setTimeout(r, 2500));
-  const totalAleatorio = (Math.random() * 50000 + 1000).toFixed(2);
-  const ivaCalculado = (totalAleatorio * 0.21).toFixed(2);
-  const neto = (totalAleatorio - ivaCalculado).toFixed(2);
-  res.json({
-    success: true,
-    data: {
-      cuit_emisor: '30-54668997-9',
-      razon_social: 'YPF S.A. (Estación de Servicio)',
-      fecha: new Date().toLocaleDateString(),
-      neto: parseFloat(neto),
-      iva: parseFloat(ivaCalculado),
-      total: parseFloat(totalAleatorio),
-      categoria: 'Combustibles'
+  
+  try {
+    console.log("Iniciando escaneo OCR con Tesseract...");
+    const { data: { text } } = await Tesseract.recognize(
+      req.file.buffer,
+      'spa'
+    );
+
+    console.log("Texto extraído:\n", text);
+
+    const cuitMatch = text.match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d{1}\b/);
+    const cuit = cuitMatch ? cuitMatch[0].replace(/-/g, '') : '';
+
+    const fechaMatch = text.match(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/);
+    const fecha = fechaMatch ? fechaMatch[0].replace(/-/g, '/') : new Date().toLocaleDateString('es-AR');
+
+    const montos = text.match(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b/g) || [];
+    let total = 0;
+    
+    if (montos.length > 0) {
+      const montosNumericos = montos.map(m => {
+        const str = m.replace(/[.,](?=\d{2}$)/, '@').replace(/[.,]/g, '').replace('@', '.');
+        return parseFloat(str);
+      });
+      total = Math.max(...montosNumericos);
     }
-  });
+    
+    if (total > 10000000 || isNaN(total)) total = 0;
+
+    const neto = (total / 1.21).toFixed(2);
+    const iva = (total - neto).toFixed(2);
+
+    res.json({
+      success: true,
+      data: {
+        cuit_emisor: cuit,
+        razon_social: cuit ? 'Local Detectado (Autocompletar)' : 'No detectado',
+        fecha: fecha,
+        neto: parseFloat(neto),
+        iva: parseFloat(iva),
+        total: total,
+        categoria: 'Gastos Generales'
+      }
+    });
+
+  } catch (err) {
+    console.error("Error OCR:", err);
+    res.status(500).json({ error: 'Fallo al analizar la imagen con IA.' });
+  }
 });
 
 app.post('/api/sync-afip', async (req, res) => {
