@@ -409,6 +409,7 @@ app.post('/api/backup', async (req, res) => {
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
+      family: 4, // Fuerza estrictamente el uso de IPv4 a nivel de Sockets
       auth: {
         user: 'sistemacontadorpro@gmail.com',
         pass: 'taszlrasjsnfzbde'
