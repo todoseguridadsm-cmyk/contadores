@@ -19,68 +19,65 @@ app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => 
   if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
   
   try {
-    console.log("Iniciando escaneo OCR con la IA de Mindee...");
+    console.log("Iniciando escaneo OCR con OCR.Space...");
     
     const form = new FormData();
-    form.append('document', req.file.buffer, req.file.originalname || 'ticket.jpg');
+    form.append('apikey', 'helloworld'); // Clave pública gratuita
+    form.append('language', 'spa');
+    form.append('isTable', 'true'); // Mejora la lectura de tickets térmicos
+    form.append('file', req.file.buffer, { filename: req.file.originalname || 'ticket.jpg' });
 
-    const response = await axios.post(
-      'https://api.mindee.net/v1/products/mindee/expense_receipts/v5/predict',
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          'Authorization': `Token ${process.env.MINDEE_API_KEY}`
-        }
-      }
-    );
+    const response = await axios.post('https://api.ocr.space/parse/image', form, {
+      headers: form.getHeaders()
+    });
 
-    const prediction = response.data.document.inference.prediction;
-
-    // Extracción de CUIT
-    let cuit = '';
-    if (prediction.supplier_company_registrations && prediction.supplier_company_registrations.length > 0) {
-      cuit = prediction.supplier_company_registrations[0].value.replace(/\D/g, '');
+    if (!response.data.ParsedResults || response.data.ParsedResults.length === 0) {
+      throw new Error("No se pudo extraer texto de la imagen.");
     }
 
-    // Extracción de Fecha
-    let fecha = new Date().toLocaleDateString('es-AR');
-    if (prediction.date && prediction.date.value) {
-      const [y, m, d] = prediction.date.value.split('-');
-      fecha = `${d}/${m}/${y}`;
+    const text = response.data.ParsedResults[0].ParsedText;
+    console.log("Texto extraído por OCR.Space:\n", text);
+
+    // Búsqueda de CUIT
+    const cuitMatch = text.match(/\b(20|23|24|27|30|33|34)-?\d{8}-?\d{1}\b/);
+    const cuit = cuitMatch ? cuitMatch[0].replace(/-/g, '') : '';
+
+    // Búsqueda de Fecha
+    const fechaMatch = text.match(/\b\d{2}[\/\-]\d{2}[\/\-]\d{4}\b/);
+    const fecha = fechaMatch ? fechaMatch[0].replace(/-/g, '/') : new Date().toLocaleDateString('es-AR');
+
+    // Búsqueda de Montos
+    const montos = text.match(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b/g) || [];
+    let total = 0;
+    
+    if (montos.length > 0) {
+      const montosNumericos = montos.map(m => {
+        const str = m.replace(/[.,](?=\d{2}$)/, '@').replace(/[.,]/g, '').replace('@', '.');
+        return parseFloat(str);
+      });
+      total = Math.max(...montosNumericos);
     }
+    
+    if (total > 10000000 || isNaN(total)) total = 0;
 
-    // Extracción de Total
-    const total = prediction.total_amount?.value || 0;
-
-    // Extracción de IVA (Mindee devuelve array de taxes)
-    let iva = 0;
-    if (prediction.taxes && prediction.taxes.length > 0) {
-      iva = prediction.taxes.reduce((acc, t) => acc + (t.value || 0), 0);
-    } else {
-      iva = total - (total / 1.21); // Si no encuentra IVA, asume 21%
-    }
-
-    const neto = (total - iva).toFixed(2);
-    const razonSocial = prediction.supplier_name?.value || 'Comercio No Detectado';
-
-    console.log(`[Mindee] Ticket leído: ${razonSocial} | Total: ${total} | IVA: ${iva}`);
+    const neto = (total / 1.21).toFixed(2);
+    const iva = (total - neto).toFixed(2);
 
     res.json({
       success: true,
       data: {
         cuit_emisor: cuit,
-        razon_social: razonSocial,
+        razon_social: cuit ? 'Local Detectado (Revisar)' : 'No detectado',
         fecha: fecha,
         neto: parseFloat(neto),
-        iva: parseFloat(iva.toFixed(2)),
+        iva: parseFloat(iva),
         total: total,
-        categoria: prediction.category?.value || 'Gastos Generales'
+        categoria: 'Gastos Generales'
       }
     });
 
   } catch (err) {
-    console.error("Error OCR Mindee:", err.response ? err.response.data : err.message);
+    console.error("Error OCR Space:", err.response ? err.response.data : err.message);
     res.status(500).json({ error: 'Fallo al analizar la imagen con IA.' });
   }
 });
