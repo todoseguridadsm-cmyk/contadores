@@ -4,6 +4,10 @@ const puppeteer = require('puppeteer');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const dns = require('dns');
+
+// Solución definitiva para el error ENETUNREACH en Render (Forzar a usar IPv4 en lugar de IPv6)
+dns.setDefaultResultOrder('ipv4first');
 const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const WebSocket = require('ws');
