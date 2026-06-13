@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, RefreshCw, Eye, Calendar, User, Search, Bell } from 'lucide-react';
+import { Mail, RefreshCw, Eye, Calendar, User, Search, Bell, CheckCircle, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function BandejaView() {
@@ -86,11 +86,14 @@ export default function BandejaView() {
     return a.leido ? 1 : -1;
   });
 
-  const filteredNotifications = allNotifications.filter(n => 
-    n.clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    n.asunto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    n.cuit?.includes(searchTerm)
-  );
+  const filteredNotifications = allNotifications.filter(n => {
+    const search = searchTerm.toLowerCase();
+    const nombre = (n.clienteNombre || '').toLowerCase();
+    const asunto = (n.asunto || '').toLowerCase();
+    const cuit = n.cuit || n.clienteCuit || '';
+    
+    return nombre.includes(search) || asunto.includes(search) || cuit.includes(search);
+  });
 
   return (
     <div className="content-area">
