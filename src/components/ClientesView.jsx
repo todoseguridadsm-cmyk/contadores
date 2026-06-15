@@ -11,6 +11,11 @@ export default function ClientesView() {
   const [syncingId, setSyncingId] = useState(null);
   const [syncProgress, setSyncProgress] = useState(0);
 
+  // Bulk Sync states
+  const [isBulkSyncing, setIsBulkSyncing] = useState(false);
+  const [bulkStatusText, setBulkStatusText] = useState('');
+  const cancelBulkRef = React.useRef(false);
+
   // Selector de Fechas para la Sincronización
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -131,7 +136,44 @@ export default function ClientesView() {
     }
   };
 
-  const handleSyncAFIP = async (cliente) => {
+  const handleBulkSync = async () => {
+    if (clientes.length === 0) return;
+    if (!window.confirm(`¿Iniciar sincronización en cola lenta para ${clientes.length} clientes?\n\nEl sistema procesará uno, esperará 2 minutos para burlar a AFIP, y seguirá con el próximo. Puedes dejar la pestaña abierta e irte a tomar un café.`)) return;
+    
+    setIsBulkSyncing(true);
+    cancelBulkRef.current = false;
+    
+    for (let i = 0; i < clientes.length; i++) {
+      if (cancelBulkRef.current) break;
+      
+      const cliente = clientes[i];
+      setBulkStatusText(`Sincronizando ${i + 1}/${clientes.length}: ${cliente.nombre}...`);
+      
+      await handleSyncAFIP(cliente, true);
+      
+      if (i < clientes.length - 1 && !cancelBulkRef.current) {
+        // Pausa de 120 segundos
+        for (let s = 120; s > 0; s--) {
+          if (cancelBulkRef.current) break;
+          setBulkStatusText(`Descanso de seguridad AFIP... Próximo en ${s} segs`);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+    }
+    
+    setBulkStatusText('');
+    setIsBulkSyncing(false);
+    if (!cancelBulkRef.current) {
+      alert('¡Sincronización Masiva Completada!');
+    }
+  };
+
+  const cancelBulkSync = () => {
+    cancelBulkRef.current = true;
+    setBulkStatusText('Cancelando... (terminará la operación actual y se detendrá)');
+  };
+
+  const handleSyncAFIP = async (cliente, isBulk = false) => {
     setSyncingId(cliente.id);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -150,9 +192,11 @@ export default function ClientesView() {
       if (!response.ok) throw new Error(data.error || 'Error desconocido');
 
       setSyncProgress(100);
-      setTimeout(() => {
-        alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${data.ventas.totalNetoGravado}\nCompras Netas: $${data.compras.totalNetoGravado}`);
-      }, 100);
+      if (!isBulk) {
+        setTimeout(() => {
+          alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${data.ventas.totalNetoGravado}\nCompras Netas: $${data.compras.totalNetoGravado}`);
+        }, 100);
+      }
       
       // Actualizamos estado en base de datos junto con los cálculos json
       const { error } = await supabase
@@ -164,7 +208,7 @@ export default function ClientesView() {
           compras_json: data.compras
         })
         .eq('id', cliente.id);
-      fetchClientes();
+      await fetchClientes();
 
     } catch (error) {
       let errorMsg = error.message;
@@ -178,9 +222,13 @@ export default function ClientesView() {
         errorMsg = 'La Clave Fiscal es incorrecta o ha expirado. Por favor, verifica las credenciales.';
       }
 
-      alert(`⚠️ ALERTA DE SINCRONIZACIÓN\n\n${errorMsg}`);
+      if (!isBulk) {
+        alert(`⚠️ ALERTA DE SINCRONIZACIÓN\n\n${errorMsg}`);
+      } else {
+        console.error(`Error bulk sync para ${cliente.nombre}: ${errorMsg}`);
+      }
       await supabase.from('clientes').update({ estado: 'Error de Sync' }).eq('id', cliente.id);
-      fetchClientes();
+      await fetchClientes();
     } finally {
       setSyncingId(null);
       setSyncProgress(0);
@@ -234,7 +282,7 @@ export default function ClientesView() {
         <button className="btn btn-primary" onClick={openNewModal}>Nuevo Cliente</button>
       </div>
 
-      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'var(--bg-main)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
         <div>
           <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Rango a Extraer: Desde</label>
           <input type="date" className="input-field" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} />
@@ -244,7 +292,22 @@ export default function ClientesView() {
           <input type="date" className="input-field" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} />
         </div>
         <div style={{ flex: 1, paddingBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          * Estas fechas se inyectarán en AFIP cuando hagas clic en el botón Sincronizar de la tabla.
+          * Estas fechas se inyectarán en AFIP al sincronizar.
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
+          {isBulkSyncing ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--warning-bg)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--warning)' }}>
+              <span style={{ fontWeight: 600, color: '#000', fontSize: '0.9rem' }}>{bulkStatusText}</span>
+              <button className="btn btn-secondary" onClick={cancelBulkSync} style={{ border: '1px solid var(--danger)', color: 'var(--danger)', padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
+                Detener Cola
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={handleBulkSync} disabled={clientes.length === 0 || syncingId !== null}>
+              Sincronizar a Todos (Cola Lenta)
+            </button>
+          )}
         </div>
       </div>
 
