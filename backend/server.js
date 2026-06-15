@@ -120,7 +120,7 @@ app.post('/api/sync-afip', async (req, res) => {
     
     const isProduction = process.env.NODE_ENV === 'production';
     browser = await puppeteer.launch({ 
-      headless: isProduction ? 'new' : false, 
+      headless: false, 
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
       defaultViewport: null,
       args: isProduction ? [
@@ -128,7 +128,7 @@ app.post('/api/sync-afip', async (req, res) => {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu'
-      ] : ['--start-minimized'] 
+      ] : ['--start-maximized'] 
     });
     const page = await browser.newPage();
     
@@ -178,8 +178,54 @@ app.post('/api/sync-afip', async (req, res) => {
     const newTarget = await targetPromise;
     const newPage = await newTarget.page();
     
-    console.log('[BOT] -> Esperando 15 segundos a que cargue la SPA de Mis Comprobantes...');
-    await new Promise(r => setTimeout(r, 15000));
+    console.log('[BOT] -> Esperando a que cargue la SPA de Mis Comprobantes...');
+    await new Promise(r => setTimeout(r, 10000));
+
+    // ================= PANTALLA DE REPRESENTADOS (Elegí una persona) =================
+    console.log('[BOT] -> Verificando si existe la pantalla de "Elegí una persona para ingresar"...');
+    try {
+      const hasRepresentados = await newPage.evaluate((rawCuit) => {
+        const cleanTarget = rawCuit.replace(/[\-\s]/g, '');
+        
+        // 1. Buscar en elementos grandes clickeables (formularios, tarjetas de AFIP)
+        const containers = document.querySelectorAll('form, .card, .list-group-item, div[role="button"], button');
+        for (const el of containers) {
+          if (el.innerText && el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)) {
+             el.click();
+             return true;
+          }
+        }
+        
+        // 2. Búsqueda profunda si el contenedor no era obvio
+        const allElements = document.querySelectorAll('*');
+        for (const el of allElements) {
+          // buscar nodos finales de texto
+          if (el.children.length === 0 && el.innerText && el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)) {
+             // Subir hasta encontrar algo clickeable o clickear el mismo elemento
+             let clickable = el;
+             while(clickable && clickable !== document.body) {
+               if(clickable.tagName === 'A' || clickable.tagName === 'BUTTON' || clickable.className.includes('card')) {
+                 clickable.click();
+                 return true;
+               }
+               clickable = clickable.parentElement;
+             }
+             el.click();
+             return true;
+          }
+        }
+        return false;
+      }, cuit);
+
+      if (hasRepresentados) {
+        console.log(`[BOT] -> ¡Pantalla de representados detectada! Se seleccionó el CUIT ${cuit}. Esperando carga...`);
+        await new Promise(r => setTimeout(r, 10000));
+      } else {
+        console.log('[BOT] -> No se detectó pantalla de múltiples CUITs, continuando directo...');
+      }
+    } catch(e) {
+      console.log('[BOT] -> Error verificando representados (ignorado).');
+    }
 
     // ================= EXTRACCIÓN EMITIDOS =================
     console.log(`[BOT] -> Paso 6: Extrayendo EMITIDOS (Ventas) para el periodo ${fechaAfip}...`);
@@ -188,6 +234,8 @@ app.post('/api/sync-afip', async (req, res) => {
       await newPage.waitForSelector('#btnEmitidos', { visible: true, timeout: 20000 });
       await newPage.click('#btnEmitidos');
     } catch (e) {
+      // TOMAR UNA CAPTURA DE PANTALLA ANTES DE FALLAR
+      await newPage.screenshot({ path: 'afip-debug.png', fullPage: true });
       throw new Error("No se pudo encontrar el botón 'Emitidos'. Es posible que el servicio 'Mis Comprobantes' no esté adherido en la AFIP de este cliente, o AFIP está inactivo.");
     }
 
