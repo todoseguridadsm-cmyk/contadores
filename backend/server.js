@@ -183,7 +183,14 @@ app.post('/api/sync-afip', async (req, res) => {
 
     // ================= EXTRACCIÓN EMITIDOS =================
     console.log(`[BOT] -> Paso 6: Extrayendo EMITIDOS (Ventas) para el periodo ${fechaAfip}...`);
-    await newPage.evaluate(() => document.getElementById('btnEmitidos').click());
+    
+    try {
+      await newPage.waitForSelector('#btnEmitidos', { visible: true, timeout: 20000 });
+      await newPage.click('#btnEmitidos');
+    } catch (e) {
+      throw new Error("No se pudo encontrar el botón 'Emitidos'. Es posible que el servicio 'Mis Comprobantes' no esté adherido en la AFIP de este cliente, o AFIP está inactivo.");
+    }
+
     await new Promise(r => setTimeout(r, 5000));
     
     // Inyectar el rango de fechas dinámico
@@ -198,7 +205,9 @@ app.post('/api/sync-afip', async (req, res) => {
       }, fechaAfip);
     }
 
-    await newPage.evaluate(() => document.getElementById('buscarComprobantes').click());
+    await newPage.waitForSelector('#buscarComprobantes', { visible: true, timeout: 10000 });
+    await newPage.click('#buscarComprobantes');
+    
     console.log('[BOT] -> Esperando grilla de resultados (Ventas)...');
     await new Promise(r => setTimeout(r, 5000));
 
@@ -216,7 +225,13 @@ app.post('/api/sync-afip', async (req, res) => {
     await new Promise(r => setTimeout(r, 8000)); // Esperar a que recargue la SPA
 
     console.log('[BOT] -> Haciendo clic en "Recibidos"...');
-    await newPage.evaluate(() => document.getElementById('btnRecibidos').click());
+    try {
+      await newPage.waitForSelector('#btnRecibidos', { visible: true, timeout: 20000 });
+      await newPage.click('#btnRecibidos');
+    } catch (e) {
+      throw new Error("No se pudo encontrar el botón 'Recibidos' en la página de AFIP.");
+    }
+    
     await new Promise(r => setTimeout(r, 5000));
 
     // Inyectar el rango de fechas dinámico
@@ -231,7 +246,9 @@ app.post('/api/sync-afip', async (req, res) => {
       }, fechaAfip);
     }
 
-    await newPage.evaluate(() => document.getElementById('buscarComprobantes').click());
+    await newPage.waitForSelector('#buscarComprobantes', { visible: true, timeout: 10000 });
+    await newPage.click('#buscarComprobantes');
+    
     console.log('[BOT] -> Esperando grilla de resultados (Compras)...');
     await new Promise(r => setTimeout(r, 5000));
 
