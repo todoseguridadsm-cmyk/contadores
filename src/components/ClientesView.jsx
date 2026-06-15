@@ -9,6 +9,7 @@ export default function ClientesView() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState(null);
+  const [syncProgress, setSyncProgress] = useState(0);
 
   // Selector de Fechas para la Sincronización
   const [fechaDesde, setFechaDesde] = useState('');
@@ -31,6 +32,22 @@ export default function ClientesView() {
     setFechaDesde(`${año}-${mes}-01`);
     setFechaHasta(`${año}-${mes}-${diaMes}`);
   }, []);
+
+  useEffect(() => {
+    let interval;
+    if (syncingId) {
+      setSyncProgress(0);
+      interval = setInterval(() => {
+        setSyncProgress(prev => {
+          if (prev >= 95) return 95; // Stop at 95% until done
+          return prev + 1;
+        });
+      }, 600); // 1% every 600ms = ~60 seconds to 100%
+    } else {
+      setSyncProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [syncingId]);
 
   const fetchClientes = async () => {
     setLoading(true);
@@ -132,7 +149,10 @@ export default function ClientesView() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error desconocido');
 
-      alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${data.ventas.totalNetoGravado}\nCompras Netas: $${data.compras.totalNetoGravado}`);
+      setSyncProgress(100);
+      setTimeout(() => {
+        alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${data.ventas.totalNetoGravado}\nCompras Netas: $${data.compras.totalNetoGravado}`);
+      }, 100);
       
       // Actualizamos estado en base de datos junto con los cálculos json
       const { error } = await supabase
@@ -147,11 +167,23 @@ export default function ClientesView() {
       fetchClientes();
 
     } catch (error) {
-      alert(`Error al sincronizar: ${error.message}`);
+      let errorMsg = error.message;
+      if (errorMsg.includes('buscadorInput')) {
+        errorMsg = 'AFIP requiere acción manual.\nInicia sesión en afip.gob.ar con este CUIT y cierra el cartel de aviso o completa el trámite obligatorio que está bloqueando la pantalla de inicio. Luego intenta sincronizar de nuevo.';
+      } else if (errorMsg.includes('Emitidos') || errorMsg.includes('Recibidos') || errorMsg.includes('Mis Comprobantes no esté adherido')) {
+        errorMsg = 'El cliente no tiene habilitado el servicio de "Mis Comprobantes" en AFIP, o su sesión requiere validación manual.';
+      } else if (errorMsg.includes('Timeout') || errorMsg.includes('timeout') || errorMsg.includes('30000ms')) {
+        errorMsg = 'La AFIP está demorando demasiado en responder o está caída. Intenta nuevamente más tarde.';
+      } else if (errorMsg.toLowerCase().includes('clave') || errorMsg.toLowerCase().includes('login')) {
+        errorMsg = 'La Clave Fiscal es incorrecta o ha expirado. Por favor, verifica las credenciales.';
+      }
+
+      alert(`⚠️ ALERTA DE SINCRONIZACIÓN\n\n${errorMsg}`);
       await supabase.from('clientes').update({ estado: 'Error de Sync' }).eq('id', cliente.id);
       fetchClientes();
     } finally {
       setSyncingId(null);
+      setSyncProgress(0);
     }
   };
 
@@ -252,12 +284,36 @@ export default function ClientesView() {
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                       <button 
                         className="btn btn-secondary" 
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                        style={{ 
+                          padding: '0.25rem 0.5rem', 
+                          fontSize: '0.75rem',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          border: '1px solid var(--border-color)',
+                          background: syncingId === cliente.id ? 'var(--secondary-bg)' : 'transparent',
+                          color: syncingId === cliente.id ? '#fff' : 'inherit',
+                          minWidth: '130px'
+                        }}
                         onClick={() => handleSyncAFIP(cliente)}
                         disabled={syncingId === cliente.id}
                       >
-                        <RefreshCw size={14} className={syncingId === cliente.id ? 'spin' : ''} style={{ marginRight: '4px' }} />
-                        {syncingId === cliente.id ? 'Bot trabajando...' : 'Sincronizar'}
+                        {syncingId === cliente.id && (
+                          <div style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: `${syncProgress}%`,
+                            backgroundColor: 'var(--success)',
+                            zIndex: 0,
+                            transition: 'width 0.5s ease',
+                            opacity: 0.8
+                          }} />
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative', textShadow: syncingId === cliente.id ? '0 1px 2px rgba(0,0,0,0.5)' : 'none' }}>
+                          <RefreshCw size={14} className={syncingId === cliente.id ? 'spin' : ''} style={{ marginRight: '4px' }} />
+                          {syncingId === cliente.id ? `Trabajando... ${syncProgress}%` : 'Sincronizar'}
+                        </div>
                       </button>
                       <button className="icon-btn" title="Editar Cliente" onClick={() => openEditModal(cliente)}>
                         <Edit2 size={18} />
