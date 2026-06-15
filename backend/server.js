@@ -187,33 +187,50 @@ app.post('/api/sync-afip', async (req, res) => {
       const hasRepresentados = await newPage.evaluate((rawCuit) => {
         const cleanTarget = rawCuit.replace(/[\-\s]/g, '');
         
-        // 1. Buscar en elementos grandes clickeables (formularios, tarjetas de AFIP)
-        const containers = document.querySelectorAll('form, .card, .list-group-item, div[role="button"], button');
-        for (const el of containers) {
-          if (el.innerText && el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)) {
-             el.click();
-             return true;
+        const allElements = Array.from(document.querySelectorAll('*'));
+        
+        // Buscar el elemento de texto más profundo que contenga el CUIT
+        const textNodes = allElements.filter(el => 
+          el.children.length === 0 && 
+          el.innerText && 
+          el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)
+        );
+        
+        if (textNodes.length > 0) {
+          // Encontramos el CUIT en la pantalla
+          let target = textNodes[0];
+          
+          // Buscar hacia arriba un botón o un formulario
+          let current = target;
+          while (current && current !== document.body) {
+            if (current.tagName === 'BUTTON' || current.tagName === 'A' || current.getAttribute('role') === 'button') {
+              current.click();
+              return true;
+            }
+            if (current.tagName === 'FORM') {
+              // Si es un formulario, buscamos su botón de submit y lo clickeamos, o hacemos submit
+              const submitBtn = current.querySelector('input[type="submit"], button');
+              if (submitBtn) {
+                submitBtn.click();
+              } else {
+                current.submit();
+              }
+              return true;
+            }
+            // A veces AFIP usa un div onClick
+            if (current.onclick) {
+              current.click();
+              return true;
+            }
+            current = current.parentElement;
           }
+          
+          // Si no encontró nada obvio en los padres, le damos click al elemento de texto mismo y a su padre por si acaso
+          target.click();
+          if(target.parentElement) target.parentElement.click();
+          return true;
         }
         
-        // 2. Búsqueda profunda si el contenedor no era obvio
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-          // buscar nodos finales de texto
-          if (el.children.length === 0 && el.innerText && el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)) {
-             // Subir hasta encontrar algo clickeable o clickear el mismo elemento
-             let clickable = el;
-             while(clickable && clickable !== document.body) {
-               if(clickable.tagName === 'A' || clickable.tagName === 'BUTTON' || clickable.className.includes('card')) {
-                 clickable.click();
-                 return true;
-               }
-               clickable = clickable.parentElement;
-             }
-             el.click();
-             return true;
-          }
-        }
         return false;
       }, cuit);
 
@@ -224,7 +241,7 @@ app.post('/api/sync-afip', async (req, res) => {
         console.log('[BOT] -> No se detectó pantalla de múltiples CUITs, continuando directo...');
       }
     } catch(e) {
-      console.log('[BOT] -> Error verificando representados (ignorado).');
+      console.log('[BOT] -> Error verificando representados (ignorado).', e.message);
     }
 
     // ================= EXTRACCIÓN EMITIDOS =================
