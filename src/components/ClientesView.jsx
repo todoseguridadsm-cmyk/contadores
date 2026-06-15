@@ -42,7 +42,7 @@ export default function ClientesView() {
           if (prev >= 95) return 95; // Stop at 95% until done
           return prev + 1;
         });
-      }, 600); // 1% every 600ms = ~60 seconds to 100%
+      }, 1200); // 1% cada 1.2 segundos = ~114 segundos para llegar al 95%
     } else {
       setSyncProgress(0);
     }
