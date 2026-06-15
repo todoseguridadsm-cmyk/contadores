@@ -120,7 +120,7 @@ app.post('/api/sync-afip', async (req, res) => {
     
     const isProduction = process.env.NODE_ENV === 'production';
     browser = await puppeteer.launch({ 
-      headless: false, 
+      headless: isProduction ? 'new' : false, 
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
       defaultViewport: null,
       args: isProduction ? [
