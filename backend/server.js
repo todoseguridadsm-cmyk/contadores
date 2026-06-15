@@ -97,8 +97,12 @@ Responde ÚNICAMENTE con el objeto JSON, sin formato markdown ni texto adicional
 });
 
 app.post('/api/sync-afip', async (req, res) => {
-  const { cuit, clave_fiscal, fechaDesde, fechaHasta } = req.body;
+  let { cuit, clave_fiscal, fechaDesde, fechaHasta } = req.body;
   if (!cuit || !clave_fiscal) return res.status(400).json({ error: 'Faltan credenciales' });
+  
+  // Limpiar espacios en blanco accidentales que los usuarios suelen dejar al copiar y pegar
+  cuit = cuit.trim();
+  clave_fiscal = clave_fiscal.trim();
 
   // Función para pasar de YYYY-MM-DD a DD/MM/YYYY
   const parseDate = (dateStr) => {
