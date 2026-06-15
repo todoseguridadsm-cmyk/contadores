@@ -289,6 +289,45 @@ app.post('/api/sync-afip', async (req, res) => {
     await newPage.goto('https://fes.afip.gob.ar/mcmp/jsp/index.do', { waitUntil: 'networkidle2' });
     await new Promise(r => setTimeout(r, 8000)); // Esperar a que recargue la SPA
 
+    // ================= PANTALLA DE REPRESENTADOS (Revisión tras recargar) =================
+    console.log('[BOT] -> Verificando si al recargar la página volvió a pedir el representante...');
+    try {
+      const hasRepresentadosAgain = await newPage.evaluate((rawCuit) => {
+        const cleanTarget = rawCuit.replace(/[\-\s]/g, '');
+        const allElements = Array.from(document.querySelectorAll('*'));
+        const textNodes = allElements.filter(el => 
+          el.children.length === 0 && el.innerText && el.innerText.replace(/[\-\s]/g, '').includes(cleanTarget)
+        );
+        if (textNodes.length > 0) {
+          let target = textNodes[0];
+          let current = target;
+          while (current && current !== document.body) {
+            if (current.tagName === 'BUTTON' || current.tagName === 'A' || current.getAttribute('role') === 'button') {
+              current.click(); return true;
+            }
+            if (current.tagName === 'FORM') {
+              const submitBtn = current.querySelector('input[type="submit"], button');
+              if (submitBtn) submitBtn.click(); else current.submit();
+              return true;
+            }
+            if (current.onclick) { current.click(); return true; }
+            current = current.parentElement;
+          }
+          target.click();
+          if(target.parentElement) target.parentElement.click();
+          return true;
+        }
+        return false;
+      }, cuit);
+
+      if (hasRepresentadosAgain) {
+        console.log(`[BOT] -> ¡Pantalla de representados detectada de nuevo! Seleccionando...`);
+        await new Promise(r => setTimeout(r, 10000));
+      }
+    } catch(e) {
+      console.log('[BOT] -> Error verificando representados en Recibidos (ignorado).');
+    }
+
     console.log('[BOT] -> Haciendo clic en "Recibidos"...');
     try {
       await newPage.waitForSelector('#btnRecibidos', { visible: true, timeout: 20000 });
