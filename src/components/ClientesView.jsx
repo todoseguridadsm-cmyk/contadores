@@ -169,7 +169,7 @@ export default function ClientesView() {
     } catch (error) {
       let errorMsg = error.message;
       if (errorMsg.includes('buscadorInput')) {
-        errorMsg = 'AFIP requiere acción manual.\nInicia sesión en afip.gob.ar con este CUIT y cierra el cartel de aviso o completa el trámite obligatorio que está bloqueando la pantalla de inicio. Luego intenta sincronizar de nuevo.';
+        errorMsg = 'AFIP requiere acción manual.\nInicia sesión en afip.gob.ar con este CUIT y cierra el cartel de aviso o completa el trámite obligatorio que está bloqueando la pantalla de inicio. Luego intenta sincronizar de nuevo.\n\nINFO TÉCNICA (DEBUG):\n' + errorMsg;
       } else if (errorMsg.includes('Emitidos') || errorMsg.includes('Recibidos') || errorMsg.includes('Mis Comprobantes no esté adherido')) {
         errorMsg = 'El cliente no tiene habilitado el servicio de "Mis Comprobantes" en AFIP, o su sesión requiere validación manual.';
       } else if (errorMsg.includes('Timeout') || errorMsg.includes('timeout') || errorMsg.includes('30000ms')) {

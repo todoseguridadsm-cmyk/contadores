@@ -166,7 +166,12 @@ app.post('/api/sync-afip', async (req, res) => {
     // 2. BUSCADOR
     console.log('[BOT] -> Paso 5: Escribiendo "Mis Comprobantes" en el Buscador...');
     const searchSelector = '#buscadorInput, input[type="search"], input[placeholder*="cesit"], input[placeholder*="trámites"]';
-    await page.waitForSelector(searchSelector, { visible: true, timeout: 20000 });
+    try {
+      await page.waitForSelector(searchSelector, { visible: true, timeout: 20000 });
+    } catch (err) {
+      const dump = await page.evaluate(() => document.body.innerText);
+      throw new Error(`buscadorInput timeout. Dump: ${dump.substring(0, 400)}`);
+    }
     await page.click(searchSelector);
     await new Promise(r => setTimeout(r, 1000));
     await page.type(searchSelector, 'Mis Comprobantes', { delay: 100 });
