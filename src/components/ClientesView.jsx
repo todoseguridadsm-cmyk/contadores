@@ -10,6 +10,7 @@ export default function ClientesView() {
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState(null);
   const [syncProgress, setSyncProgress] = useState(0);
+  const [selectedClients, setSelectedClients] = useState([]);
 
   // Bulk Sync states
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
@@ -137,21 +138,26 @@ export default function ClientesView() {
   };
 
   const handleBulkSync = async () => {
-    if (clientes.length === 0) return;
-    if (!window.confirm(`¿Iniciar sincronización en cola lenta para ${clientes.length} clientes?\n\nEl sistema procesará uno, esperará 2 minutos para burlar a AFIP, y seguirá con el próximo. Puedes dejar la pestaña abierta e irte a tomar un café.`)) return;
+    const clientsToSync = selectedClients.length > 0 
+      ? clientes.filter(c => selectedClients.includes(c.id))
+      : clientes;
+
+    if (clientsToSync.length === 0) return;
+    
+    if (!window.confirm(`¿Iniciar sincronización en cola lenta para ${clientsToSync.length} clientes?\n\nEl sistema procesará uno, esperará 2 minutos para burlar a AFIP, y seguirá con el próximo. Puedes dejar la pestaña abierta e irte a tomar un café.`)) return;
     
     setIsBulkSyncing(true);
     cancelBulkRef.current = false;
     
-    for (let i = 0; i < clientes.length; i++) {
+    for (let i = 0; i < clientsToSync.length; i++) {
       if (cancelBulkRef.current) break;
       
-      const cliente = clientes[i];
-      setBulkStatusText(`Sincronizando ${i + 1}/${clientes.length}: ${cliente.nombre}...`);
+      const cliente = clientsToSync[i];
+      setBulkStatusText(`Sincronizando ${i + 1}/${clientsToSync.length}: ${cliente.nombre}...`);
       
       await handleSyncAFIP(cliente, true);
       
-      if (i < clientes.length - 1 && !cancelBulkRef.current) {
+      if (i < clientsToSync.length - 1 && !cancelBulkRef.current) {
         // Pausa de 120 segundos
         for (let s = 120; s > 0; s--) {
           if (cancelBulkRef.current) break;
@@ -305,7 +311,7 @@ export default function ClientesView() {
             </div>
           ) : (
             <button className="btn btn-primary" onClick={handleBulkSync} disabled={clientes.length === 0 || syncingId !== null}>
-              Sincronizar a Todos (Cola Lenta)
+              {selectedClients.length > 0 ? `Sincronizar Seleccionados (${selectedClients.length})` : 'Sincronizar a Todos (Cola Lenta)'}
             </button>
           )}
         </div>
@@ -318,6 +324,20 @@ export default function ClientesView() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
               <tr>
+                <th style={{ padding: '1rem 1.5rem', width: '40px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={clientes.length > 0 && selectedClients.length === clientes.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedClients(clientes.map(c => c.id));
+                      } else {
+                        setSelectedClients([]);
+                      }
+                    }}
+                    style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                  />
+                </th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Cliente</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>CUIT</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Última Sincronización</th>
@@ -327,7 +347,21 @@ export default function ClientesView() {
             </thead>
             <tbody>
               {clientes.map((cliente) => (
-                <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)', background: selectedClients.includes(cliente.id) ? 'var(--secondary-bg)' : 'transparent' }}>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedClients.includes(cliente.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedClients([...selectedClients, cliente.id]);
+                        } else {
+                          setSelectedClients(selectedClients.filter(id => id !== cliente.id));
+                        }
+                      }}
+                      style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                    />
+                  </td>
                   <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--text-main)' }}>{cliente.nombre}</td>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.cuit}</td>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.ultima_sincronizacion || 'Nunca'}</td>
@@ -390,7 +424,7 @@ export default function ClientesView() {
               ))}
               {clientes.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     No hay clientes registrados. ¡Agrega uno nuevo!
                   </td>
                 </tr>
