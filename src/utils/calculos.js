@@ -4,6 +4,7 @@ export function procesarComprobantes(comprobantes) {
     totalNoGravado: 0,
     totalExento: 0,
     totalIVA: 0,
+    totalIVA_NC: 0,
     totalPercepcionesNacionales: 0,
     totalPercepcionesIIBB: 0,
     totalPercepcionesMunicipales: 0,
@@ -26,6 +27,10 @@ export function procesarComprobantes(comprobantes) {
     const totalIva = parseImporte(comp['IVA'] || comp['Total IVA']);
     const total = parseImporte(comp['Importe Total'] || comp['Imp. Total']);
     
+    // Identificar Notas de Crédito
+    const tipoComp = String(comp['Tipo'] || comp['Tipo de Comprobante'] || '').toLowerCase();
+    const isNC = tipoComp.includes('nota de crédito') || tipoComp.includes('nota de credito');
+
     // Percepciones
     const percNac = parseImporte(comp['Percepciones Nacionales']);
     const percIIBB = parseImporte(comp['Percepciones Ingresos Brutos'] || comp['Percepciones IIBB']);
@@ -35,7 +40,13 @@ export function procesarComprobantes(comprobantes) {
     resumen.totalNetoGravado += neto;
     resumen.totalNoGravado += noGravado;
     resumen.totalExento += exento;
-    resumen.totalIVA += totalIva;
+    
+    if (isNC) {
+      resumen.totalIVA_NC += totalIva;
+    } else {
+      resumen.totalIVA += totalIva;
+    }
+    
     resumen.totalGeneral += total;
     resumen.totalPercepcionesNacionales += percNac;
     resumen.totalPercepcionesIIBB += percIIBB;
@@ -47,8 +58,11 @@ export function procesarComprobantes(comprobantes) {
 }
 
 export function calcularSaldos(resumenVentas, resumenCompras, saldoAnteriorArrastre = 0) {
-  const ivaVentas = resumenVentas.totalIVA || 0;
-  const ivaCompras = resumenCompras.totalIVA || 0;
+  // AFIP cruza las Notas de Crédito (Restitución):
+  // - NC de Compras (Crédito a Restituir) -> Suma al Débito Fiscal
+  // - NC de Ventas (Débito a Restituir) -> Suma al Crédito Fiscal
+  const ivaVentas = (resumenVentas.totalIVA || 0) + (resumenCompras.totalIVA_NC || 0);
+  const ivaCompras = (resumenCompras.totalIVA || 0) + (resumenVentas.totalIVA_NC || 0);
   
   // Saldo Técnico
   // Positivo = Débito mayor al Crédito (A pagar IVA puro)
