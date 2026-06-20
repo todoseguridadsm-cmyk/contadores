@@ -1,6 +1,7 @@
 export function procesarComprobantes(comprobantes) {
   let resumen = {
     totalNetoGravado: 0,
+    totalNetoGravado_NC: 0,
     totalNoGravado: 0,
     totalExento: 0,
     totalIVA: 0,
@@ -28,8 +29,9 @@ export function procesarComprobantes(comprobantes) {
     const total = parseImporte(comp['Importe Total'] || comp['Imp. Total']);
     
     // Identificar Notas de Crédito
-    const tipoComp = String(comp['Tipo'] || comp['Tipo de Comprobante'] || '').toLowerCase();
-    const isNC = tipoComp.includes('nota de crédito') || tipoComp.includes('nota de credito');
+    const tipoComp = String(comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || comp['Comprobante'] || '').toLowerCase();
+    const isNC = tipoComp.includes('nota de cr') || tipoComp.includes('nc ') || tipoComp === 'nc' || tipoComp.includes('n.c') || tipoComp.includes('nota crédito');
+
 
     // Percepciones
     const percNac = parseImporte(comp['Percepciones Nacionales']);
@@ -37,14 +39,18 @@ export function procesarComprobantes(comprobantes) {
     const percMuni = parseImporte(comp['Percepciones Impuestos Municipales']);
     const impInt = parseImporte(comp['Impuestos Internos']);
 
-    resumen.totalNetoGravado += neto;
-    resumen.totalNoGravado += noGravado;
-    resumen.totalExento += exento;
-    
     if (isNC) {
-      resumen.totalIVA_NC += totalIva;
+      resumen.totalIVA_NC += Math.abs(totalIva);
+      // Las NC se separan en variables propias en lugar de restarlas del total
+      resumen.totalNetoGravado_NC += Math.abs(neto);
+      // Se siguen restando de los informativos globales para no desvirtuar el total global si es necesario
+      resumen.totalNoGravado -= Math.abs(noGravado);
+      resumen.totalExento -= Math.abs(exento);
     } else {
       resumen.totalIVA += totalIva;
+      resumen.totalNetoGravado += neto;
+      resumen.totalNoGravado += noGravado;
+      resumen.totalExento += exento;
     }
     
     resumen.totalGeneral += total;

@@ -21,11 +21,12 @@ export default function ClientesView() {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  // Form states
   const [editingId, setEditingId] = useState(null);
   const [nombre, setNombre] = useState('');
   const [cuit, setCuit] = useState('');
   const [claveFiscal, setClaveFiscal] = useState('');
+  const [tipoContribuyente, setTipoContribuyente] = useState('FISICA');
+  const [cuitRepresentante, setCuitRepresentante] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -75,6 +76,8 @@ export default function ClientesView() {
     setNombre('');
     setCuit('');
     setClaveFiscal('');
+    setTipoContribuyente('FISICA');
+    setCuitRepresentante('');
     setIsModalOpen(true);
   };
 
@@ -83,6 +86,8 @@ export default function ClientesView() {
     setNombre(cliente.nombre);
     setCuit(cliente.cuit);
     setClaveFiscal(cliente.clave_fiscal);
+    setTipoContribuyente(cliente.tipo_contribuyente || 'FISICA');
+    setCuitRepresentante(cliente.cuit_representante || '');
     setIsEditModalOpen(true);
   };
 
@@ -97,10 +102,14 @@ export default function ClientesView() {
         // Edit Mode
         const { error } = await supabase
           .from('clientes')
-          .update({ nombre, cuit, clave_fiscal: claveFiscal })
+          .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
           .eq('id', editingId);
         
-        if (error) throw error;
+        if (error) {
+           if (error.message.includes('column "tipo_contribuyente"')) {
+               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' a tu tabla 'clientes' en Supabase para usar esta función.");
+           } else throw error;
+        }
         setIsEditModalOpen(false);
       } else {
         // Create Mode
@@ -108,11 +117,17 @@ export default function ClientesView() {
           nombre, 
           cuit, 
           clave_fiscal: claveFiscal,
+          tipo_contribuyente: tipoContribuyente,
+          cuit_representante: cuitRepresentante,
           estado: 'Pendiente Sincronización',
           ultima_sincronizacion: 'Nunca'
         };
         const { error } = await supabase.from('clientes').insert([nuevoCliente]);
-        if (error) throw error;
+        if (error) {
+           if (error.message.includes('column "tipo_contribuyente"')) {
+               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' a tu tabla 'clientes' en Supabase para usar esta función.");
+           } else throw error;
+        }
         setIsModalOpen(false);
       }
       
@@ -254,17 +269,34 @@ export default function ClientesView() {
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div>
-          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nombre o Razón Social</label>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Tipo de Contribuyente</label>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="radio" value="FISICA" checked={tipoContribuyente === 'FISICA'} onChange={(e) => setTipoContribuyente(e.target.value)} />
+              Persona Física
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="radio" value="JURIDICA" checked={tipoContribuyente === 'JURIDICA'} onChange={(e) => setTipoContribuyente(e.target.value)} />
+              Persona Jurídica (Empresa)
+            </label>
+          </div>
+        </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>{tipoContribuyente === 'JURIDICA' ? 'Nombre Fantasía / Responsable' : 'Nombre Completo'}</label>
           <input type="text" className="input-field" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
         </div>
-        
         <div>
-          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>CUIT</label>
-          <input type="text" className="input-field" placeholder="Ej: 20123456789" value={cuit} onChange={(e) => setCuit(e.target.value)} required />
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>CUIT {tipoContribuyente === 'JURIDICA' ? 'de la Empresa' : ''}</label>
+          <input type="text" className="input-field" value={cuit} onChange={(e) => setCuit(e.target.value)} placeholder="Sin guiones" required />
         </div>
-
+        {tipoContribuyente === 'JURIDICA' && (
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>CUIT Representante Legal</label>
+            <input type="text" className="input-field" value={cuitRepresentante} onChange={(e) => setCuitRepresentante(e.target.value)} placeholder="Sin guiones" required />
+          </div>
+        )}
         <div>
-          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Clave Fiscal (AFIP)</label>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Clave Fiscal (AFIP)</label>
           <input type="password" className="input-field" value={claveFiscal} onChange={(e) => setClaveFiscal(e.target.value)} required />
         </div>
 

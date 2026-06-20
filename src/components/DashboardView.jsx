@@ -38,10 +38,10 @@ export default function DashboardView() {
       setClienteActivo(cliente);
       
       if (cliente.ventas_json) setVentasStats(cliente.ventas_json);
-      else setVentasStats({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
+      else setVentasStats({ totalNetoGravado: 0, totalNetoGravado_NC: 0, totalIVA: 0, totalIVA_NC: 0, cantidadComprobantes: 0, lista: [] });
 
       if (cliente.compras_json) setComprasStats(cliente.compras_json);
-      else setComprasStats({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
+      else setComprasStats({ totalNetoGravado: 0, totalNetoGravado_NC: 0, totalIVA: 0, totalIVA_NC: 0, cantidadComprobantes: 0, lista: [] });
 
       if (cliente.saldo_acumulado !== undefined && cliente.saldo_acumulado !== null) {
         setSaldoAnterior(Number(cliente.saldo_acumulado));
@@ -50,8 +50,8 @@ export default function DashboardView() {
       }
     } else {
       setClienteActivo(null);
-      setVentasStats({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
-      setComprasStats({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
+      setVentasStats({ totalNetoGravado: 0, totalNetoGravado_NC: 0, totalIVA: 0, totalIVA_NC: 0, cantidadComprobantes: 0, lista: [] });
+      setComprasStats({ totalNetoGravado: 0, totalNetoGravado_NC: 0, totalIVA: 0, totalIVA_NC: 0, cantidadComprobantes: 0, lista: [] });
       setSaldoAnterior(0);
     }
   };
@@ -192,21 +192,43 @@ export default function DashboardView() {
             <div className="metric-icon success-bg">
               <TrendingUp className="success-text" size={24} />
             </div>
-            <span className="metric-label">Ventas Totales (Neto)</span>
+            <span className="metric-label" style={{ fontWeight: 'bold' }}>1) Ventas Totales (Facturas)</span>
           </div>
-          <h3 className="metric-value">{formatMoney(ventasStats.totalNetoGravado)}</h3>
-          <p className="metric-trend neutral">{ventasStats.cantidadComprobantes} comprobantes emitidos</p>
+          <h3 className="metric-value">{formatMoney((ventasStats.totalNetoGravado || 0) + (ventasStats.totalIVA || 0))}</h3>
+          <p className="metric-trend success">Neto: {formatMoney(ventasStats.totalNetoGravado)} | Débito: {formatMoney(ventasStats.totalIVA)}</p>
         </div>
-        
+
         <div className="card metric-card">
           <div className="metric-header">
             <div className="metric-icon danger-bg">
               <TrendingDown className="danger-text" size={24} />
             </div>
-            <span className="metric-label">Compras Totales (Neto)</span>
+            <span className="metric-label" style={{ fontWeight: 'bold' }}>4) Dev. de Ventas (NC Emitidas)</span>
           </div>
-          <h3 className="metric-value">{formatMoney(comprasStats.totalNetoGravado)}</h3>
-          <p className="metric-trend neutral">{comprasStats.cantidadComprobantes} comprobantes recibidos</p>
+          <h3 className="metric-value" style={{ color: 'var(--danger)' }}>-{formatMoney((ventasStats.totalNetoGravado_NC || 0) + (ventasStats.totalIVA_NC || 0))}</h3>
+          <p className="metric-trend danger">Neto: {formatMoney(ventasStats.totalNetoGravado_NC)} | Crédito: {formatMoney(ventasStats.totalIVA_NC)}</p>
+        </div>
+        
+        <div className="card metric-card">
+          <div className="metric-header">
+            <div className="metric-icon primary-bg">
+              <TrendingDown className="primary-text" size={24} />
+            </div>
+            <span className="metric-label" style={{ fontWeight: 'bold' }}>2) Compras Totales (Recibidas)</span>
+          </div>
+          <h3 className="metric-value">{formatMoney((comprasStats.totalNetoGravado || 0) + (comprasStats.totalIVA || 0))}</h3>
+          <p className="metric-trend primary">Neto: {formatMoney(comprasStats.totalNetoGravado)} | Crédito: {formatMoney(comprasStats.totalIVA)}</p>
+        </div>
+
+        <div className="card metric-card">
+          <div className="metric-header">
+            <div className="metric-icon warning-bg">
+              <TrendingUp className="warning-text" size={24} />
+            </div>
+            <span className="metric-label" style={{ fontWeight: 'bold' }}>3) Dev. de Compras (NC Recibidas)</span>
+          </div>
+          <h3 className="metric-value" style={{ color: 'var(--warning)' }}>-{formatMoney((comprasStats.totalNetoGravado_NC || 0) + (comprasStats.totalIVA_NC || 0))}</h3>
+          <p className="metric-trend warning">Neto: {formatMoney(comprasStats.totalNetoGravado_NC)} | Débito: {formatMoney(comprasStats.totalIVA_NC)}</p>
         </div>
 
         <div className="card metric-card highlight-card" style={{ background: 'linear-gradient(135deg, var(--warning) 0%, #e6a800 100%)' }}>
