@@ -17,33 +17,57 @@ export function procesarComprobantes(comprobantes) {
 
   comprobantes.forEach(comp => {
     const parseImporte = (val) => {
-      if (!val) return 0;
-      if (typeof val === 'number') return val;
-      return parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
+      if (val === undefined || val === null || val === '') return 0;
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      let str = String(val).replace(/\$/g, '').trim();
+      if (str.includes(',') && str.includes('.')) {
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+          str = str.replace(/\./g, '').replace(',', '.');
+        } else {
+          str = str.replace(/,/g, '');
+        }
+      } else if (str.includes(',')) {
+        str = str.replace(',', '.');
+      }
+      return parseFloat(str) || 0;
     };
 
-    const neto = parseImporte(comp['Importe Neto Gravado'] || comp['Imp. Neto Gravado Total']);
-    const noGravado = parseImporte(comp['Importe No Gravado'] || comp['Conceptos No Gravados'] || comp['Imp. Tot. Conc. No Gravados']);
-    const exento = parseImporte(comp['Importe Exento'] || comp['Imp. Op. Exentas']);
-    const totalIva = parseImporte(comp['IVA'] || comp['Total IVA']);
-    const total = parseImporte(comp['Importe Total'] || comp['Imp. Total']);
+    const neto = parseImporte(comp.neto ?? comp['Importe Neto Gravado'] ?? comp['Imp. Neto Gravado Total'] ?? comp['Neto']);
+    const noGravado = parseImporte(comp.noGravado ?? comp['Importe No Gravado'] ?? comp['Conceptos No Gravados'] ?? comp['Imp. Tot. Conc. No Gravados']);
+    const exento = parseImporte(comp.exento ?? comp['Importe Exento'] ?? comp['Imp. Op. Exentas']);
+    const total = parseImporte(comp.total ?? comp['Importe Total'] ?? comp['Imp. Total']);
+    
+    // Percepciones e impuestos
+    const percNac = parseImporte(comp.percNac ?? comp['Percepciones Nacionales']);
+    const percIIBB = parseImporte(comp.percIIBB ?? comp['Percepciones Ingresos Brutos'] ?? comp['Percepciones IIBB']);
+    const percMuni = parseImporte(comp.percMun ?? comp['Percepciones Impuestos Municipales']);
+    const impInt = parseImporte(comp.impInt ?? comp['Impuestos Internos']);
+
+    // IVA directo o alícuotas
+    let totalIva = parseImporte(comp.iva ?? comp['IVA'] ?? comp['Total IVA'] ?? comp['Imp. Total IVA'] ?? comp['Importe IVA']);
+    if (totalIva === 0) {
+      const iva21 = parseImporte(comp['IVA 21%'] ?? comp.iva21);
+      const iva105 = parseImporte(comp['IVA 10,5%'] ?? comp.iva105);
+      const iva27 = parseImporte(comp['IVA 27%'] ?? comp.iva27);
+      const alicSum = iva21 + iva105 + iva27;
+      if (alicSum > 0) {
+        totalIva = alicSum;
+      } else if (neto > 0 && total > neto) {
+        // Cálculo por diferencia si no vino columna de IVA explicita
+        const diff = total - neto - noGravado - exento - percNac - percIIBB - percMuni - impInt;
+        if (diff > 0 && diff <= neto * 0.28) {
+          totalIva = Number(diff.toFixed(2));
+        }
+      }
+    }
     
     // Identificar Notas de Crédito
-    const tipoComp = String(comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || comp['Comprobante'] || '').toLowerCase();
+    const tipoComp = String(comp.tipoComp || comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || comp['Comprobante'] || '').toLowerCase();
     const isNC = tipoComp.includes('nota de cr') || tipoComp.includes('nc ') || tipoComp === 'nc' || tipoComp.includes('n.c') || tipoComp.includes('nota crédito');
-
-
-    // Percepciones
-    const percNac = parseImporte(comp['Percepciones Nacionales']);
-    const percIIBB = parseImporte(comp['Percepciones Ingresos Brutos'] || comp['Percepciones IIBB']);
-    const percMuni = parseImporte(comp['Percepciones Impuestos Municipales']);
-    const impInt = parseImporte(comp['Impuestos Internos']);
 
     if (isNC) {
       resumen.totalIVA_NC += Math.abs(totalIva);
-      // Las NC se separan en variables propias en lugar de restarlas del total
       resumen.totalNetoGravado_NC += Math.abs(neto);
-      // Se siguen restando de los informativos globales para no desvirtuar el total global si es necesario
       resumen.totalNoGravado -= Math.abs(noGravado);
       resumen.totalExento -= Math.abs(exento);
     } else {
@@ -60,12 +84,12 @@ export function procesarComprobantes(comprobantes) {
     resumen.totalImpuestosInternos += impInt;
 
     resumen.lista.push({
-      fecha: comp['Fecha'] || comp['Fecha de Emisión'] || '',
-      tipoComp: comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || '',
-      puntoVenta: comp['Punto de Venta'] || '',
-      numero: comp['Número'] || comp['Número Desde'] || '',
-      cuit: comp['Nro. Doc. Receptor'] || comp['Nro. Doc. Emisor'] || comp['CUIT'] || '',
-      razon_social: comp['Denominación Receptor'] || comp['Denominación Emisor'] || comp['Razón Social'] || '',
+      fecha: comp.fecha || comp['Fecha'] || comp['Fecha de Emisión'] || '',
+      tipoComp: comp.tipoComp || comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || '',
+      puntoVenta: comp.puntoVenta || comp['Punto de Venta'] || '',
+      numero: comp.numero || comp['Número'] || comp['Número Desde'] || '',
+      cuit: comp.cuit || comp['Nro. Doc. Receptor'] || comp['Nro. Doc. Emisor'] || comp['CUIT'] || '',
+      razon_social: comp.razon_social || comp['Denominación Receptor'] || comp['Denominación Emisor'] || comp['Razón Social'] || '',
       neto,
       noGravado,
       exento,
@@ -81,12 +105,35 @@ export function procesarComprobantes(comprobantes) {
   return resumen;
 }
 
-export function calcularSaldos(resumenVentas, resumenCompras, saldoAnteriorArrastre = 0) {
+const sumarIvaLista = (resumen) => {
+  let ivaNormal = 0;
+  let ivaNC = 0;
+  if (Array.isArray(resumen?.lista) && resumen.lista.length > 0) {
+    resumen.lista.forEach(item => {
+      const t = String(item.tipoComp || '').toLowerCase();
+      const isNC = t.includes('nota de cr') || t.includes('nc') || t.includes('nota crédito');
+      const iv = Math.abs(Number(item.iva) || 0);
+      if (isNC) ivaNC += iv;
+      else ivaNormal += iv;
+    });
+  }
+  return { ivaNormal, ivaNC };
+};
+
+export function calcularSaldos(resumenVentas = {}, resumenCompras = {}, saldoAnteriorArrastre = 0) {
+  const sumVentas = sumarIvaLista(resumenVentas);
+  const sumCompras = sumarIvaLista(resumenCompras);
+
+  const ivaVentasPuro = Math.max(Number(resumenVentas.totalIVA) || 0, sumVentas.ivaNormal);
+  const ivaVentasNC = Math.max(Number(resumenVentas.totalIVA_NC) || 0, sumVentas.ivaNC);
+  const ivaComprasPuro = Math.max(Number(resumenCompras.totalIVA) || 0, sumCompras.ivaNormal);
+  const ivaComprasNC = Math.max(Number(resumenCompras.totalIVA_NC) || 0, sumCompras.ivaNC);
+
   // AFIP cruza las Notas de Crédito (Restitución):
   // - NC de Compras (Crédito a Restituir) -> Suma al Débito Fiscal
   // - NC de Ventas (Débito a Restituir) -> Suma al Crédito Fiscal
-  const ivaVentas = (resumenVentas.totalIVA || 0) + (resumenCompras.totalIVA_NC || 0);
-  const ivaCompras = (resumenCompras.totalIVA || 0) + (resumenVentas.totalIVA_NC || 0);
+  const ivaVentas = ivaVentasPuro + ivaComprasNC;
+  const ivaCompras = ivaComprasPuro + ivaVentasNC;
   
   // Saldo Técnico
   // Positivo = Débito mayor al Crédito (A pagar IVA puro)

@@ -21,7 +21,7 @@ function App() {
     setActiveTab('dashboard');
   }, []);
 
-  // Auto-cierre de sesión a los 7 minutos de inactividad
+  // Auto-cierre de sesión a los 30 minutos de inactividad
   useEffect(() => {
     if (!loggedUser) return;
 
@@ -30,8 +30,8 @@ function App() {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         handleLogout();
-        alert('Tu sesión ha expirado por inactividad (7 minutos). Vuelve a ingresar para continuar.');
-      }, 7 * 60 * 1000); // 7 minutos en milisegundos
+        alert('Tu sesión ha expirado por inactividad (30 minutos). Vuelve a ingresar para continuar.');
+      }, 30 * 60 * 1000); // 30 minutos en milisegundos
     };
 
     // Escuchar eventos de actividad del usuario

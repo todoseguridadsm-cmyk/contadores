@@ -423,7 +423,8 @@ app.post('/api/sync-afip', async (req, res) => {
             const idxPercIIBB = headers.indexOf('"Percepciones Ingresos Brutos"');
             const idxPercMun = headers.indexOf('"Percepciones Impuestos Municipales"');
             const idxImpInt = headers.indexOf('"Impuestos Internos"');
-            const idxIva = headers.indexOf('"Total IVA"');
+            let idxIva = headers.indexOf('"Total IVA"');
+            if (idxIva === -1) idxIva = headers.findIndex(h => h.includes('Total IVA') || h.includes('"IVA"') || h === '"IVA"');
             const idxTotal = headers.indexOf('"Imp. Total"');
 
             // Alícuotas
@@ -434,11 +435,11 @@ app.post('/api/sync-afip', async (req, res) => {
             const idxIva27 = headers.indexOf('"IVA 27%"');
             const idxNeto27 = headers.indexOf('"Imp. Neto Gravado IVA 27%"');
             
-            if (idxNeto !== -1 && idxIva !== -1) {
+            if (idxNeto !== -1 || idxTotal !== -1) {
               for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim() === '') continue;
                 const cols = lines[i].split(';');
-                if (cols.length > Math.max(idxNeto, idxIva)) {
+                if (cols.length > 2) {
                   const parseNum = (idx) => {
                     if (idx === -1 || !cols[idx]) return 0;
                     const raw = cols[idx].replace(/"/g, '').trim();
@@ -454,6 +455,18 @@ app.post('/api/sync-afip', async (req, res) => {
                   let impInt = parseNum(idxImpInt);
                   let iva = parseNum(idxIva);
                   let total = parseNum(idxTotal);
+
+                  if (iva === 0) {
+                    const ivaAlicSum = parseNum(idxIva21) + parseNum(idxIva105) + parseNum(idxIva27);
+                    if (ivaAlicSum > 0) {
+                      iva = ivaAlicSum;
+                    } else if (neto > 0 && total > neto) {
+                      const diff = total - neto - noGravado - exento - percNac - percIIBB - percMun - impInt;
+                      if (diff > 0 && diff <= neto * 0.28) {
+                        iva = Number(diff.toFixed(2));
+                      }
+                    }
+                  }
                   
                   const tipoCompStr = idxTipoComp !== -1 && cols[idxTipoComp] ? cols[idxTipoComp].replace(/"/g, '').toLowerCase() : '';
                   const isNC = tipoCompStr.includes('nota de cr') || tipoCompStr.includes('nc') || tipoCompStr.includes('nota crédito');
