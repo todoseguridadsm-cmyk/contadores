@@ -78,3 +78,64 @@ export const exportarTicketsTxtAFIP = (ticketsProcesados) => {
   link.click();
   document.body.removeChild(link);
 };
+
+/**
+ * Exporta la planilla anual de 12 meses idéntica a la solicitada por el contador
+ * (VENTAS | IVA DF | COMPRAS | IVA CF) mes a mes con fila de TOTAL ANUAL.
+ */
+export const exportarPlanillaAnual12MesesExcel = (clienteNombre, anio, datos12Meses) => {
+  const nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  let totalVentas = 0;
+  let totalIvaDF = 0;
+  let totalCompras = 0;
+  let totalIvaCF = 0;
+
+  const filas = datos12Meses.map((m, idx) => {
+    const vNeto = Number(m.ventasNeto || 0);
+    const vIva = Number(m.ventasIva || 0);
+    const cNeto = Number(m.comprasNeto || 0);
+    const cIva = Number(m.comprasIva || 0);
+
+    totalVentas += vNeto;
+    totalIvaDF += vIva;
+    totalCompras += cNeto;
+    totalIvaCF += cIva;
+
+    return {
+      MES: nombresMeses[idx],
+      VENTAS: vNeto,
+      'IVA DF': vIva,
+      COMPRAS: cNeto,
+      'IVA CF': cIva,
+      'SALDO IVA': vIva - cIva
+    };
+  });
+
+  filas.push({
+    MES: 'TOTAL ANUAL',
+    VENTAS: totalVentas,
+    'IVA DF': totalIvaDF,
+    COMPRAS: totalCompras,
+    'IVA CF': totalIvaCF,
+    'SALDO IVA': totalIvaDF - totalIvaCF
+  });
+
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [
+    { wch: 15 }, // MES
+    { wch: 18 }, // VENTAS
+    { wch: 16 }, // IVA DF
+    { wch: 18 }, // COMPRAS
+    { wch: 16 }, // IVA CF
+    { wch: 18 }  // SALDO IVA
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `Resumen ${anio}`);
+  const nombreLimpio = (clienteNombre || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `Planilla_12_Meses_${nombreLimpio}_${anio}.xlsx`);
+};
