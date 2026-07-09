@@ -5,11 +5,15 @@ import { procesarComprobantes, calcularSaldos } from '../utils/calculos';
 import { exportarDashboardExcel } from '../utils/exportacion';
 import { exportarTxtAfip } from '../utils/exportacionTxt';
 import { supabase } from '../lib/supabase';
+import { CATEGORIAS_INFO, getCategoriaCliente } from './ClientesView';
 
 export default function DashboardView() {
   const [clientes, setClientes] = useState([]);
   const [selectedClienteId, setSelectedClienteId] = useState('');
   const [clienteActivo, setClienteActivo] = useState(null);
+
+  const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [ventasStats, setVentasStats] = useState({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
   const [comprasStats, setComprasStats] = useState({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
@@ -104,7 +108,162 @@ export default function DashboardView() {
   };
 
   const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
-  const formatMoney = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
+  const formatMoney = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(amount) || 0);
+
+  const obtenerDesglose = (stats) => {
+    const res = {
+      facturas: { cantidad: 0, neto: 0, iva: 0, noGravado: 0, exento: 0, percepciones: 0, total: 0 },
+      nc: { cantidad: 0, neto: 0, iva: 0, noGravado: 0, exento: 0, percepciones: 0, total: 0 }
+    };
+    if (!stats) return res;
+
+    if (Array.isArray(stats.lista) && stats.lista.length > 0) {
+      stats.lista.forEach(item => {
+        const t = String(item.tipoComp || '').toLowerCase();
+        const isNC = t.includes('nota de cr') || t.includes('nc') || t.includes('nota crédito');
+        const neto = Math.abs(Number(item.neto) || 0);
+        const iva = Math.abs(Number(item.iva) || 0);
+        const noGrav = Math.abs(Number(item.noGravado) || 0);
+        const exen = Math.abs(Number(item.exento) || 0);
+        const perc = Math.abs((Number(item.percNac)||0) + (Number(item.percIIBB)||0) + (Number(item.percMun)||0) + (Number(item.impInt)||0));
+        const total = Math.abs(Number(item.total) || (neto + iva + noGrav + exen + perc));
+
+        if (isNC) {
+          res.nc.cantidad++;
+          res.nc.neto += neto;
+          res.nc.iva += iva;
+          res.nc.noGravado += noGrav;
+          res.nc.exento += exen;
+          res.nc.percepciones += perc;
+          res.nc.total += total;
+        } else {
+          res.facturas.cantidad++;
+          res.facturas.neto += neto;
+          res.facturas.iva += iva;
+          res.facturas.noGravado += noGrav;
+          res.facturas.exento += exen;
+          res.facturas.percepciones += perc;
+          res.facturas.total += total;
+        }
+      });
+    } else {
+      res.facturas = {
+        cantidad: Number(stats.cantidadComprobantes) || 0,
+        neto: Number(stats.totalNetoGravado) || 0,
+        iva: Number(stats.totalIVA) || 0,
+        noGravado: Number(stats.totalNoGravado) || 0,
+        exento: Number(stats.totalExento) || 0,
+        percepciones: (Number(stats.totalPercepcionesNacionales)||0) + (Number(stats.totalPercepcionesIIBB)||0) + (Number(stats.totalPercepcionesMunicipales)||0) + (Number(stats.totalImpuestosInternos)||0),
+        total: Number(stats.totalGeneral) || ((Number(stats.totalNetoGravado)||0) + (Number(stats.totalIVA)||0))
+      };
+      res.nc = {
+        cantidad: 0,
+        neto: Number(stats.totalNetoGravado_NC) || 0,
+        iva: Number(stats.totalIVA_NC) || 0,
+        noGravado: 0,
+        exento: 0,
+        percepciones: 0,
+        total: (Number(stats.totalNetoGravado_NC)||0) + (Number(stats.totalIVA_NC)||0)
+      };
+    }
+    return res;
+  };
+
+  const desgloseVentas = obtenerDesglose(ventasStats);
+  const desgloseCompras = obtenerDesglose(comprasStats);
+
+  const renderPanelContable = ({ numero, titulo, icon: Icon, colorClass, datos, tipoIva, esDevolucion = false }) => {
+    const total = datos?.total || 0;
+    const neto = datos?.neto || 0;
+    const iva = datos?.iva || 0;
+    const noGravEx = (datos?.noGravado || 0) + (datos?.exento || 0);
+    const percepciones = datos?.percepciones || 0;
+    const cantidad = datos?.cantidad || 0;
+
+    return (
+      <div className="card" style={{ 
+        display: 'flex', flexDirection: 'column', gap: '1rem', 
+        border: '1px solid var(--border-color)',
+        borderTop: `4px solid var(--${colorClass})`,
+        background: 'var(--bg-surface)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Cabecera del Panel */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ 
+              padding: '0.5rem', borderRadius: '8px', 
+              background: `var(--${colorClass}-bg, rgba(255,255,255,0.05))` 
+            }}>
+              <Icon className={`${colorClass}-text`} style={{ color: `var(--${colorClass})` }} size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                {numero}) {titulo}
+              </span>
+            </div>
+          </div>
+          <span style={{ 
+            fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', 
+            borderRadius: '12px', background: 'var(--bg-main)', color: 'var(--text-muted)',
+            border: '1px solid var(--border-color)'
+          }}>
+            {cantidad} comp.
+          </span>
+        </div>
+
+        {/* Total Bruto Principal */}
+        <div style={{ padding: '0.25rem 0', textAlign: 'left' }}>
+          <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', fontWeight: 600 }}>
+            {esDevolucion ? 'TOTAL DEVUELTO (NC)' : 'TOTAL BRUTO COMPROBANTES'}
+          </span>
+          <h3 style={{ 
+            fontSize: '1.65rem', fontWeight: 800, margin: '0.25rem 0 0', 
+            color: esDevolucion ? `var(--${colorClass})` : 'var(--text-main)' 
+          }}>
+            {esDevolucion && total > 0 ? '-' : ''}{formatMoney(total)}
+          </h3>
+        </div>
+
+        {/* Grilla Detallada de Desglose (Neto, IVA, No Gravado, Percepciones) */}
+        <div style={{ 
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', 
+          background: 'var(--bg-main)', padding: '0.85rem', borderRadius: '8px',
+          border: '1px solid var(--border-light)', fontSize: '0.85rem'
+        }}>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 600 }}>NETO GRAVADO</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem', marginTop: '0.15rem' }}>
+              {esDevolucion && neto > 0 ? '-' : ''}{formatMoney(neto)}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ color: `var(--${colorClass})`, fontSize: '0.72rem', fontWeight: 700 }}>{tipoIva}</div>
+            <div style={{ fontWeight: 700, color: `var(--${colorClass})`, fontSize: '0.95rem', marginTop: '0.15rem' }}>
+              {esDevolucion && iva > 0 ? '-' : ''}{formatMoney(iva)}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '0.5rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>No Gravado / Exento</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-muted)' }}>
+              {formatMoney(noGravEx)}
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '0.5rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Percepciones / Otros</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-muted)' }}>
+              {formatMoney(percepciones)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   const renderTablaDetalle = (lista, titulo, colorClass) => {
     if (!lista || lista.length === 0) return null;
@@ -168,96 +327,173 @@ export default function DashboardView() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
-        <Database className="primary-text" size={32} />
-        <div style={{ flex: 1 }}>
-          <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-main)', fontWeight: 600 }}>Seleccionar Cliente (Sincronizado)</label>
-          <select className="input-field" value={selectedClienteId} onChange={handleClienteChange} style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', maxWidth: '400px' }}>
-            <option value="">-- Elige un cliente para ver su resumen --</option>
-            {clientes.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre} {c.ultima_sincronizacion !== 'Nunca' ? '(Sincronizado)' : '(Sin datos)'}</option>
-            ))}
-          </select>
+      <div className="card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'var(--primary-glow)', border: '1px solid var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+              FILTRAR CLIENTES POR TIPO:
+            </span>
+            <button 
+              className={`btn ${filtroCategoria === 'TODOS' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFiltroCategoria('TODOS')}
+              style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+            >
+              Todos ({clientes.length})
+            </button>
+            {Object.keys(CATEGORIAS_INFO).map(catKey => {
+              const count = clientes.filter(c => getCategoriaCliente(c) === catKey).length;
+              return (
+                <button
+                  key={catKey}
+                  onClick={() => setFiltroCategoria(catKey)}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1px solid ${CATEGORIAS_INFO[catKey].color}`,
+                    background: filtroCategoria === catKey ? CATEGORIAS_INFO[catKey].color : CATEGORIAS_INFO[catKey].bg,
+                    color: filtroCategoria === catKey ? '#fff' : CATEGORIAS_INFO[catKey].color
+                  }}
+                >
+                  Tipo {catKey} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ width: '250px' }}>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Filtrar por nombre o CUIT..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: '100%', fontSize: '0.85rem' }}
+            />
+          </div>
         </div>
-        {clienteActivo && clienteActivo.ultima_sincronizacion === 'Nunca' && (
-          <span style={{ color: 'var(--warning)', fontWeight: 500, fontSize: '0.85rem' }}>
-            ⚠️ Este cliente no ha sido sincronizado. Ve a la pestaña Clientes y usa el botón Sincronizar AFIP.
-          </span>
-        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <Database className="primary-text" size={32} />
+          <div style={{ flex: 1, minWidth: '280px' }}>
+            <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-main)', fontWeight: 600 }}>
+              Seleccionar Cliente ({clientes.filter(cliente => {
+                const cat = getCategoriaCliente(cliente);
+                const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
+                const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
+                return coincideCategoria && coincideTexto;
+              }).length} disponibles)
+            </label>
+            <select className="input-field" value={selectedClienteId} onChange={handleClienteChange} style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', width: '100%', maxWidth: '520px', fontWeight: 600 }}>
+              <option value="">-- Elige un cliente para ver su resumen --</option>
+              {clientes.filter(cliente => {
+                const cat = getCategoriaCliente(cliente);
+                const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
+                const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
+                return coincideCategoria && coincideTexto;
+              }).map(c => {
+                const cat = getCategoriaCliente(c);
+                return (
+                  <option key={c.id} value={c.id}>
+                    [Tipo {cat}] {c.nombre} {c.ultima_sincronizacion !== 'Nunca' ? '(Sincronizado)' : '(Sin datos)'}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          {clienteActivo && (
+            <span style={{
+              padding: '0.4rem 0.85rem',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              background: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.bg || 'var(--bg-main)',
+              color: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color || 'var(--text-main)',
+              border: `1px solid ${CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color}`
+            }}>
+              Categoría: Tipo {getCategoriaCliente(clienteActivo)}
+            </span>
+          )}
+          {clienteActivo && clienteActivo.ultima_sincronizacion === 'Nunca' && (
+            <span style={{ color: 'var(--warning)', fontWeight: 500, fontSize: '0.85rem' }}>
+              ⚠️ Este cliente no ha sido sincronizado.
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="metrics-grid">
-        <div className="card metric-card">
-          <div className="metric-header">
-            <div className="metric-icon success-bg">
-              <TrendingUp className="success-text" size={24} />
-            </div>
-            <span className="metric-label" style={{ fontWeight: 'bold' }}>1) Ventas Totales (Facturas)</span>
-          </div>
-          <h3 className="metric-value">{formatMoney((ventasStats.totalNetoGravado || 0) + (ventasStats.totalIVA || 0))}</h3>
-          <p className="metric-trend success">Neto: {formatMoney(ventasStats.totalNetoGravado)} | Débito: {formatMoney(ventasStats.totalIVA)}</p>
-        </div>
+      {/* 4 Paneles Principales de Libro IVA (Facturas y Notas de Crédito con Desglose Completo) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {renderPanelContable({
+          numero: 1,
+          titulo: 'Ventas Totales (Facturas & ND)',
+          icon: TrendingUp,
+          colorClass: 'success',
+          datos: desgloseVentas.facturas,
+          tipoIva: 'IVA DÉBITO FISCAL'
+        })}
 
-        <div className="card metric-card">
-          <div className="metric-header">
-            <div className="metric-icon danger-bg">
-              <TrendingDown className="danger-text" size={24} />
-            </div>
-            <span className="metric-label" style={{ fontWeight: 'bold' }}>4) Dev. de Ventas (NC Emitidas)</span>
-          </div>
-          <h3 className="metric-value" style={{ color: 'var(--danger)' }}>-{formatMoney((ventasStats.totalNetoGravado_NC || 0) + (ventasStats.totalIVA_NC || 0))}</h3>
-          <p className="metric-trend danger">Neto: {formatMoney(ventasStats.totalNetoGravado_NC)} | Crédito: {formatMoney(ventasStats.totalIVA_NC)}</p>
-        </div>
-        
-        <div className="card metric-card">
-          <div className="metric-header">
-            <div className="metric-icon primary-bg">
-              <TrendingDown className="primary-text" size={24} />
-            </div>
-            <span className="metric-label" style={{ fontWeight: 'bold' }}>2) Compras Totales (Recibidas)</span>
-          </div>
-          <h3 className="metric-value">{formatMoney((comprasStats.totalNetoGravado || 0) + (comprasStats.totalIVA || 0))}</h3>
-          <p className="metric-trend primary">Neto: {formatMoney(comprasStats.totalNetoGravado)} | Crédito: {formatMoney(comprasStats.totalIVA)}</p>
-        </div>
+        {renderPanelContable({
+          numero: 2,
+          titulo: 'Compras Totales (Facturas & ND)',
+          icon: TrendingDown,
+          colorClass: 'primary',
+          datos: desgloseCompras.facturas,
+          tipoIva: 'IVA CRÉDITO FISCAL'
+        })}
 
-        <div className="card metric-card">
-          <div className="metric-header">
-            <div className="metric-icon warning-bg">
-              <TrendingUp className="warning-text" size={24} />
-            </div>
-            <span className="metric-label" style={{ fontWeight: 'bold' }}>3) Dev. de Compras (NC Recibidas)</span>
-          </div>
-          <h3 className="metric-value" style={{ color: 'var(--warning)' }}>-{formatMoney((comprasStats.totalNetoGravado_NC || 0) + (comprasStats.totalIVA_NC || 0))}</h3>
-          <p className="metric-trend warning">Neto: {formatMoney(comprasStats.totalNetoGravado_NC)} | Débito: {formatMoney(comprasStats.totalIVA_NC)}</p>
-        </div>
+        {renderPanelContable({
+          numero: 3,
+          titulo: 'Dev. de Ventas (NC Emitidas)',
+          icon: TrendingDown,
+          colorClass: 'danger',
+          datos: desgloseVentas.nc,
+          tipoIva: 'CRÉDITO RESTITUIDO',
+          esDevolucion: true
+        })}
 
-        <div className="card metric-card highlight-card" style={{ background: 'linear-gradient(135deg, var(--warning) 0%, #e6a800 100%)' }}>
+        {renderPanelContable({
+          numero: 4,
+          titulo: 'Dev. de Compras (NC Recibidas)',
+          icon: TrendingUp,
+          colorClass: 'warning',
+          datos: desgloseCompras.nc,
+          tipoIva: 'DÉBITO RESTITUIDO',
+          esDevolucion: true
+        })}
+      </div>
+
+      {/* Tarjetas complementarias de saldo */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        <div className="card highlight-card" style={{ background: 'linear-gradient(135deg, var(--warning) 0%, #e6a800 100%)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <div className="metric-header">
-            <span className="metric-label text-white">Libre Disponibilidad (Percepciones)</span>
+            <span className="metric-label text-white" style={{ fontWeight: 'bold' }}>Libre Disponibilidad (Percepciones)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <span className="text-white" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <span className="text-white" style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>
               {formatMoney(resultadoMensual.percepcionesNacionales + resultadoMensual.percepcionesIIBB + resultadoMensual.percepcionesMunicipales)}
             </span>
           </div>
-          <p className="text-white-50" style={{ marginTop: '0.5rem' }}>Sirve para cancelar VEP o IIBB</p>
+          <p className="text-white-50" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>Sirve para cancelar VEP o IIBB</p>
         </div>
 
-        <div className="card metric-card highlight-card">
+        <div className="card highlight-card" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <div className="metric-header">
-            <span className="metric-label text-white">Saldo Anterior TÉCNICO (Arrastre)</span>
+            <span className="metric-label text-white" style={{ fontWeight: 'bold' }}>Saldo Anterior TÉCNICO (Arrastre)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <span className="text-white" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>$</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <span className="text-white" style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>$</span>
             <input 
               type="number" 
               className="input-field" 
               value={saldoAnterior} 
               onChange={(e) => setSaldoAnterior(Number(e.target.value))}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: '1.5rem', fontWeight: 'bold', padding: '0.25rem', width: '100%' }}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: '1.5rem', fontWeight: 'bold', padding: '0.25rem', width: '100%', borderRadius: '6px' }}
             />
           </div>
-          <p className="text-white-50" style={{ marginTop: '0.5rem' }}>Solo aplicable a Débitos Fiscales</p>
+          <p className="text-white-50" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>Solo aplicable a Débitos Fiscales</p>
         </div>
       </div>
 

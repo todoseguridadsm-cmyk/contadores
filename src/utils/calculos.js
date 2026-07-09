@@ -58,6 +58,24 @@ export function procesarComprobantes(comprobantes) {
     resumen.totalPercepcionesIIBB += percIIBB;
     resumen.totalPercepcionesMunicipales += percMuni;
     resumen.totalImpuestosInternos += impInt;
+
+    resumen.lista.push({
+      fecha: comp['Fecha'] || comp['Fecha de Emisión'] || '',
+      tipoComp: comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || '',
+      puntoVenta: comp['Punto de Venta'] || '',
+      numero: comp['Número'] || comp['Número Desde'] || '',
+      cuit: comp['Nro. Doc. Receptor'] || comp['Nro. Doc. Emisor'] || comp['CUIT'] || '',
+      razon_social: comp['Denominación Receptor'] || comp['Denominación Emisor'] || comp['Razón Social'] || '',
+      neto,
+      noGravado,
+      exento,
+      percNac,
+      percIIBB,
+      percMun: percMuni,
+      impInt,
+      iva: totalIva,
+      total
+    });
   });
 
   return resumen;

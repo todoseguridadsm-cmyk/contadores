@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { MoreHorizontal, Download, Edit2, Trash2, X, RefreshCw } from 'lucide-react';
+import { MoreHorizontal, Download, Edit2, Trash2, X, RefreshCw, Filter, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+
+export const CATEGORIAS_INFO = {
+  'A': { label: 'Tipo A - Gran Contribuyente', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+  'B': { label: 'Tipo B - Resp. Inscripto', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)' },
+  'C': { label: 'Tipo C - Monotributo / Pyme', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+  'D': { label: 'Tipo D - Exento / Eventual', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' },
+  'E': { label: 'Tipo E - Observación / Especial', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' }
+};
+
+export function getCategoriaCliente(cliente) {
+  if (!cliente) return 'A';
+  return cliente.categoria || localStorage.getItem(`cliente_cat_${cliente.id}`) || 'A';
+}
 
 export default function ClientesView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -11,6 +24,10 @@ export default function ClientesView() {
   const [syncingId, setSyncingId] = useState(null);
   const [syncProgress, setSyncProgress] = useState(0);
   const [selectedClients, setSelectedClients] = useState([]);
+
+  // Filtros
+  const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Bulk Sync states
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
@@ -27,7 +44,18 @@ export default function ClientesView() {
   const [claveFiscal, setClaveFiscal] = useState('');
   const [tipoContribuyente, setTipoContribuyente] = useState('FISICA');
   const [cuitRepresentante, setCuitRepresentante] = useState('');
+  const [categoria, setCategoria] = useState('A');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleQuickChangeCategoria = async (clienteId, cat) => {
+    localStorage.setItem(`cliente_cat_${clienteId}`, cat);
+    setClientes(prev => prev.map(c => c.id === clienteId ? { ...c, categoria: cat } : c));
+    try {
+      await supabase.from('clientes').update({ categoria: cat }).eq('id', clienteId);
+    } catch (e) {
+      // Ignora si la columna categoria no se creó en DB aún, ya está en localStorage
+    }
+  };
 
   useEffect(() => {
     fetchClientes();
@@ -78,6 +106,7 @@ export default function ClientesView() {
     setClaveFiscal('');
     setTipoContribuyente('FISICA');
     setCuitRepresentante('');
+    setCategoria('A');
     setIsModalOpen(true);
   };
 
@@ -88,6 +117,7 @@ export default function ClientesView() {
     setClaveFiscal(cliente.clave_fiscal);
     setTipoContribuyente(cliente.tipo_contribuyente || 'FISICA');
     setCuitRepresentante(cliente.cuit_representante || '');
+    setCategoria(getCategoriaCliente(cliente));
     setIsEditModalOpen(true);
   };
 
@@ -99,34 +129,49 @@ export default function ClientesView() {
       if(!import.meta.env.VITE_SUPABASE_URL) throw new Error("No database connected");
 
       if (editingId) {
-        // Edit Mode
+        localStorage.setItem(`cliente_cat_${editingId}`, categoria);
         const { error } = await supabase
           .from('clientes')
-          .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
+          .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, categoria })
           .eq('id', editingId);
         
         if (error) {
-           if (error.message.includes('column "tipo_contribuyente"')) {
-               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' a tu tabla 'clientes' en Supabase para usar esta función.");
+           if (error.message.includes('categoria')) {
+             await supabase
+               .from('clientes')
+               .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
+               .eq('id', editingId);
+           } else if (error.message.includes('tipo_contribuyente') || error.message.includes('cuit_representante')) {
+               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' (ambas tipo texto) a tu tabla 'clientes' en Supabase para usar esta función.");
            } else throw error;
         }
         setIsEditModalOpen(false);
       } else {
-        // Create Mode
         const nuevoCliente = { 
           nombre, 
           cuit, 
           clave_fiscal: claveFiscal,
           tipo_contribuyente: tipoContribuyente,
           cuit_representante: cuitRepresentante,
+          categoria,
           estado: 'Pendiente Sincronización',
           ultima_sincronizacion: 'Nunca'
         };
-        const { error } = await supabase.from('clientes').insert([nuevoCliente]);
+        const { error, data } = await supabase.from('clientes').insert([nuevoCliente]).select();
         if (error) {
-           if (error.message.includes('column "tipo_contribuyente"')) {
-               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' a tu tabla 'clientes' en Supabase para usar esta función.");
+           if (error.message.includes('categoria')) {
+             const fallbackCliente = {
+               nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, estado: 'Pendiente Sincronización', ultima_sincronizacion: 'Nunca'
+             };
+             const { data: d2 } = await supabase.from('clientes').insert([fallbackCliente]).select();
+             if (d2 && d2[0]) {
+               localStorage.setItem(`cliente_cat_${d2[0].id}`, categoria);
+             }
+           } else if (error.message.includes('tipo_contribuyente') || error.message.includes('cuit_representante')) {
+               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' (ambas tipo texto) a tu tabla 'clientes' en Supabase para usar esta función.");
            } else throw error;
+        } else if (data && data[0]) {
+          localStorage.setItem(`cliente_cat_${data[0].id}`, categoria);
         }
         setIsModalOpen(false);
       }
@@ -296,6 +341,16 @@ export default function ClientesView() {
           </div>
         )}
         <div>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Categoría / Tipo de Cliente</label>
+          <select className="input-field" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <option value="A">Tipo A - Gran Contribuyente / Prioridad Alta</option>
+            <option value="B">Tipo B - Responsable Inscripto Estándar</option>
+            <option value="C">Tipo C - Monotributo / Pyme</option>
+            <option value="D">Tipo D - Exento / Eventual</option>
+            <option value="E">Tipo E - Observación / Especial</option>
+          </select>
+        </div>
+        <div>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Clave Fiscal (AFIP)</label>
           <input type="password" className="input-field" value={claveFiscal} onChange={(e) => setClaveFiscal(e.target.value)} required />
         </div>
@@ -310,14 +365,75 @@ export default function ClientesView() {
     </div>
   );
 
+  const clientesFiltrados = clientes.filter(cliente => {
+    const cat = getCategoriaCliente(cliente);
+    const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
+    const coincideTexto = !searchTerm || 
+      cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      cliente.cuit?.includes(searchTerm);
+    return coincideCategoria && coincideTexto;
+  });
+
   return (
     <div className="content-area" style={{ position: 'relative' }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Directorio de Clientes</h1>
-          <p className="page-subtitle">Gestiona las conexiones a AFIP y sincroniza individualmente.</p>
+          <p className="page-subtitle">Gestiona las conexiones a AFIP, categoriza por Tipo (A-E) y sincroniza individualmente.</p>
         </div>
         <button className="btn btn-primary" onClick={openNewModal}>Nuevo Cliente</button>
+      </div>
+
+      {/* Barra de Filtros por Categoría y Búsqueda */}
+      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Filter size={16} /> FILTRAR POR TIPO:
+            </span>
+            <button 
+              className={`btn ${filtroCategoria === 'TODOS' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFiltroCategoria('TODOS')}
+              style={{ padding: '0.35rem 0.85rem', fontSize: '0.82rem' }}
+            >
+              Todos ({clientes.length})
+            </button>
+            {Object.keys(CATEGORIAS_INFO).map(catKey => {
+              const count = clientes.filter(c => getCategoriaCliente(c) === catKey).length;
+              return (
+                <button
+                  key={catKey}
+                  onClick={() => setFiltroCategoria(catKey)}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1px solid ${CATEGORIAS_INFO[catKey].color}`,
+                    background: filtroCategoria === catKey ? CATEGORIAS_INFO[catKey].color : CATEGORIAS_INFO[catKey].bg,
+                    color: filtroCategoria === catKey ? '#fff' : CATEGORIAS_INFO[catKey].color,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Tipo {catKey} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ position: 'relative', width: '280px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Buscar cliente o CUIT..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '2.25rem', width: '100%', fontSize: '0.85rem' }}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'var(--bg-main)', border: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
@@ -359,10 +475,10 @@ export default function ClientesView() {
                 <th style={{ padding: '1rem 1.5rem', width: '40px' }}>
                   <input 
                     type="checkbox" 
-                    checked={clientes.length > 0 && selectedClients.length === clientes.length}
+                    checked={clientesFiltrados.length > 0 && selectedClients.length === clientesFiltrados.length}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedClients(clientes.map(c => c.id));
+                        setSelectedClients(clientesFiltrados.map(c => c.id));
                       } else {
                         setSelectedClients([]);
                       }
@@ -371,6 +487,7 @@ export default function ClientesView() {
                   />
                 </th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Cliente</th>
+                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Categoría</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>CUIT</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Última Sincronización</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Estado</th>
@@ -378,7 +495,7 @@ export default function ClientesView() {
               </tr>
             </thead>
             <tbody>
-              {clientes.map((cliente) => (
+              {clientesFiltrados.map((cliente) => (
                 <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)', background: selectedClients.includes(cliente.id) ? 'var(--secondary-bg)' : 'transparent' }}>
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <input 
@@ -395,6 +512,28 @@ export default function ClientesView() {
                     />
                   </td>
                   <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--text-main)' }}>{cliente.nombre}</td>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <select
+                      value={getCategoriaCliente(cliente)}
+                      onChange={(e) => handleQuickChangeCategoria(cliente.id, e.target.value)}
+                      style={{
+                        background: CATEGORIAS_INFO[getCategoriaCliente(cliente)]?.bg || 'var(--bg-main)',
+                        color: CATEGORIAS_INFO[getCategoriaCliente(cliente)]?.color || 'var(--text-main)',
+                        border: `1px solid ${CATEGORIAS_INFO[getCategoriaCliente(cliente)]?.color}`,
+                        borderRadius: '8px',
+                        padding: '0.25rem 0.5rem',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="A">Tipo A - Gran Contribuyente</option>
+                      <option value="B">Tipo B - Resp. Inscripto</option>
+                      <option value="C">Tipo C - Monotributo</option>
+                      <option value="D">Tipo D - Exento</option>
+                      <option value="E">Tipo E - Observación</option>
+                    </select>
+                  </td>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.cuit}</td>
                   <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.ultima_sincronizacion || 'Nunca'}</td>
                   <td style={{ padding: '1rem 1.5rem' }}>

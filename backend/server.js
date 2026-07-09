@@ -385,13 +385,17 @@ app.post('/api/sync-afip', async (req, res) => {
     const parseZipCSV = (fileName) => {
       let stats = { 
         totalNetoGravado: 0, 
+        totalNetoGravado_NC: 0,
         totalIVA: 0, 
+        totalIVA_NC: 0,
         totalNoGravado: 0,
         totalExento: 0,
         totalPercepcionesNacionales: 0,
         totalPercepcionesIIBB: 0,
         totalPercepcionesMunicipales: 0,
         totalImpuestosInternos: 0,
+        totalGeneral: 0,
+        totalGeneral_NC: 0,
         cantidadComprobantes: 0, 
         lista: [] 
       };
@@ -437,7 +441,8 @@ app.post('/api/sync-afip', async (req, res) => {
                 if (cols.length > Math.max(idxNeto, idxIva)) {
                   const parseNum = (idx) => {
                     if (idx === -1 || !cols[idx]) return 0;
-                    return parseFloat(cols[idx].replace(',', '.').replace(/"/g, '')) || 0;
+                    const raw = cols[idx].replace(/"/g, '').trim();
+                    return parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
                   };
 
                   let neto = parseNum(idxNeto);
@@ -450,14 +455,25 @@ app.post('/api/sync-afip', async (req, res) => {
                   let iva = parseNum(idxIva);
                   let total = parseNum(idxTotal);
                   
-                  stats.totalNetoGravado += neto;
+                  const tipoCompStr = idxTipoComp !== -1 && cols[idxTipoComp] ? cols[idxTipoComp].replace(/"/g, '').toLowerCase() : '';
+                  const isNC = tipoCompStr.includes('nota de cr') || tipoCompStr.includes('nc') || tipoCompStr.includes('nota crédito');
+
+                  if (isNC) {
+                    stats.totalNetoGravado_NC += Math.abs(neto);
+                    stats.totalIVA_NC += Math.abs(iva);
+                    stats.totalGeneral_NC += Math.abs(total);
+                  } else {
+                    stats.totalNetoGravado += neto;
+                    stats.totalIVA += iva;
+                    stats.totalGeneral += total;
+                  }
+
                   stats.totalNoGravado += noGravado;
                   stats.totalExento += exento;
                   stats.totalPercepcionesNacionales += percNac;
                   stats.totalPercepcionesIIBB += percIIBB;
                   stats.totalPercepcionesMunicipales += percMun;
                   stats.totalImpuestosInternos += impInt;
-                  stats.totalIVA += iva;
                   stats.cantidadComprobantes++;
                   
                   // Detalle de lista
