@@ -487,14 +487,14 @@ export default function ClientesView() {
         </div>
       </div>
 
-      <div className="card full-width" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card full-width" style={{ padding: 0, overflowX: 'auto' }}>
         {loading ? (
           <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando clientes...</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '920px' }}>
             <thead style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
               <tr>
-                <th style={{ padding: '1rem 1.5rem', width: '40px' }}>
+                <th style={{ padding: '0.75rem 0.6rem', width: '36px' }}>
                   <input 
                     type="checkbox" 
                     checked={clientesFiltrados.length > 0 && selectedClients.length === clientesFiltrados.length}
@@ -508,13 +508,13 @@ export default function ClientesView() {
                     style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                   />
                 </th>
-                <th style={{ padding: '1rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cód.</th>
-                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Cliente</th>
-                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Categoría</th>
-                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>CUIT</th>
-                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Última Sincronización</th>
-                <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Estado</th>
-                <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>Acciones</th>
+                <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cód.</th>
+                <th style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)', fontWeight: 500 }}>Cliente</th>
+                <th style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)', fontWeight: 500 }}>Categoría</th>
+                <th style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)', fontWeight: 500 }}>CUIT</th>
+                <th style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)', fontWeight: 500 }}>Última Sinc.</th>
+                <th style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)', fontWeight: 500 }}>Estado</th>
+                <th style={{ padding: '0.75rem 0.8rem', textAlign: 'right', minWidth: '190px' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -531,7 +531,7 @@ export default function ClientesView() {
                 const cod3d = obtenerCodigo3DCliente(cliente, clientes.indexOf(cliente));
                 return (
                 <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)', background: selectedClients.includes(cliente.id) ? 'var(--secondary-bg)' : 'transparent' }}>
-                  <td style={{ padding: '1rem 1.5rem' }}>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
                     <input 
                       type="checkbox" 
                       checked={selectedClients.includes(cliente.id)}
@@ -545,9 +545,9 @@ export default function ClientesView() {
                       style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                     />
                   </td>
-                  <td style={{ padding: '1rem 1rem', fontWeight: 800, color: 'var(--primary)' }}>#{cod3d}</td>
-                  <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--text-main)' }}>{cliente.nombre}</td>
-                  <td style={{ padding: '1rem 1.5rem' }}>
+                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 800, color: 'var(--primary)' }}>#{cod3d}</td>
+                  <td style={{ padding: '0.75rem 0.6rem', fontWeight: 600, color: 'var(--text-main)' }}>{cliente.nombre}</td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
                     <select
                       value={getCategoriaCliente(cliente)}
                       onChange={(e) => handleQuickChangeCategoria(cliente.id, e.target.value)}
@@ -556,24 +556,24 @@ export default function ClientesView() {
                         color: CATEGORIAS_INFO[getCategoriaCliente(cliente)]?.color || 'var(--text-main)',
                         border: `1px solid ${CATEGORIAS_INFO[getCategoriaCliente(cliente)]?.color}`,
                         borderRadius: '8px',
-                        padding: '0.25rem 0.5rem',
+                        padding: '0.25rem 0.45rem',
                         fontWeight: 700,
                         fontSize: '0.78rem',
                         cursor: 'pointer'
                       }}
                     >
-                      <option value="A">Tipo A - Gran Contribuyente</option>
+                      <option value="A">Tipo A - Gran Contrib.</option>
                       <option value="B">Tipo B - Resp. Inscripto</option>
                       <option value="C">Tipo C - Monotributo</option>
                       <option value="D">Tipo D - Exento</option>
                       <option value="E">Tipo E - Observación</option>
                     </select>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.cuit}</td>
-                  <td style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)' }}>{cliente.ultima_sincronizacion || 'Nunca'}</td>
-                  <td style={{ padding: '1rem 1.5rem' }}>
+                  <td style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)' }}>{cliente.cuit}</td>
+                  <td style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)' }}>{cliente.ultima_sincronizacion || 'Nunca'}</td>
+                  <td style={{ padding: '0.75rem 0.6rem' }}>
                     <span style={{ 
-                      padding: '0.25rem 0.75rem', 
+                      padding: '0.25rem 0.65rem', 
                       borderRadius: '20px', 
                       fontSize: '0.75rem', 
                       fontWeight: 600,
@@ -583,8 +583,8 @@ export default function ClientesView() {
                       {cliente.estado || 'Pendiente'}
                     </span>
                   </td>
-                  <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <td style={{ padding: '0.75rem 0.8rem', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                       <button 
                         className="btn btn-secondary" 
                         style={{ 
