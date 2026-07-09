@@ -15,6 +15,14 @@ export function getCategoriaCliente(cliente) {
   return cliente.categoria || localStorage.getItem(`cliente_cat_${cliente.id}`) || 'A';
 }
 
+export function obtenerCodigo3DCliente(cliente, idx = 0) {
+  if (!cliente) return '000';
+  if (cliente.codigo_3d) return String(cliente.codigo_3d).padStart(3, '0');
+  if (cliente.nro_cliente) return String(cliente.nro_cliente).padStart(3, '0');
+  const num = (idx + 101);
+  return String(num).padStart(3, '0');
+}
+
 export default function ClientesView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -25,9 +33,10 @@ export default function ClientesView() {
   const [syncProgress, setSyncProgress] = useState(0);
   const [selectedClients, setSelectedClients] = useState([]);
 
-  // Filtros
+  // Filtros y Orden
   const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [ordenDirectorio, setOrdenDirectorio] = useState('alfabetico'); // 'alfabetico' | 'numerico'
 
   // Bulk Sync states
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
@@ -433,6 +442,19 @@ export default function ClientesView() {
               style={{ paddingLeft: '2.25rem', width: '100%', fontSize: '0.85rem' }}
             />
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Ordenar por:</span>
+            <select
+              className="input-field"
+              value={ordenDirectorio}
+              onChange={e => setOrdenDirectorio(e.target.value)}
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', fontWeight: 700 }}
+            >
+              <option value="alfabetico">Alfabético (A - Z)</option>
+              <option value="numerico">N° Cliente (#001 - #999)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -486,6 +508,7 @@ export default function ClientesView() {
                     style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                   />
                 </th>
+                <th style={{ padding: '1rem 1rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cód.</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Cliente</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Categoría</th>
                 <th style={{ padding: '1rem 1.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>CUIT</th>
@@ -495,7 +518,18 @@ export default function ClientesView() {
               </tr>
             </thead>
             <tbody>
-              {clientesFiltrados.map((cliente) => (
+              {clientesFiltrados
+              .sort((a, b) => {
+                if (ordenDirectorio === 'numerico') {
+                  const codA = obtenerCodigo3DCliente(a, clientes.indexOf(a));
+                  const codB = obtenerCodigo3DCliente(b, clientes.indexOf(b));
+                  return codA.localeCompare(codB);
+                }
+                return (a.nombre || '').localeCompare(b.nombre || '');
+              })
+              .map((cliente) => {
+                const cod3d = obtenerCodigo3DCliente(cliente, clientes.indexOf(cliente));
+                return (
                 <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)', background: selectedClients.includes(cliente.id) ? 'var(--secondary-bg)' : 'transparent' }}>
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <input 
@@ -511,6 +545,7 @@ export default function ClientesView() {
                       style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
                     />
                   </td>
+                  <td style={{ padding: '1rem 1rem', fontWeight: 800, color: 'var(--primary)' }}>#{cod3d}</td>
                   <td style={{ padding: '1rem 1.5rem', fontWeight: 600, color: 'var(--text-main)' }}>{cliente.nombre}</td>
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <select
@@ -592,10 +627,11 @@ export default function ClientesView() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
               {clientes.length === 0 && (
                 <tr>
-                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     No hay clientes registrados. ¡Agrega uno nuevo!
                   </td>
                 </tr>

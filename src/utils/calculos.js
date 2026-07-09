@@ -147,3 +147,57 @@ export function calcularSaldos(resumenVentas, resumenCompras, saldoAnteriorArras
     exentoCompras
   };
 }
+
+/**
+ * Normaliza cualquier formato de fecha ("2026-06-05", "9 de junio de 2026", "13/06/2026")
+ * al formato estándar argentino DD/MM/YYYY
+ */
+export function formatearFechaDDMMYYYY(fechaStr) {
+  if (!fechaStr) return '';
+  const str = String(fechaStr).trim();
+
+  // 1. Ya en formato DD/MM/YYYY o D/M/YYYY
+  const mBarra = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mBarra) {
+    const dia = mBarra[1].padStart(2, '0');
+    const mes = mBarra[2].padStart(2, '0');
+    let anio = mBarra[3];
+    if (anio.length === 2) anio = '20' + anio;
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  // 2. Formato ISO YYYY-MM-DD o YYYY/MM/DD
+  const mIso = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mIso) {
+    const dia = mIso[3].padStart(2, '0');
+    const mes = mIso[2].padStart(2, '0');
+    const anio = mIso[1];
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  // 3. Formato texto "9 de junio de 2026" o "09 de Junio del 2026"
+  const mesesNombres = {
+    'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04', 'mayo': '05', 'junio': '06',
+    'julio': '07', 'agosto': '08', 'septiembre': '09', 'setiembre': '09', 'octubre': '10',
+    'noviembre': '11', 'diciembre': '12'
+  };
+  const mTexto = str.toLowerCase().match(/(\d{1,2})\s+de\s+([a-z]+)\s+(?:de|del)\s+(\d{4})/);
+  if (mTexto) {
+    const dia = mTexto[1].padStart(2, '0');
+    const mesNombre = mTexto[2];
+    const mes = mesesNombres[mesNombre] || '01';
+    const anio = mTexto[3];
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  // Fallback para otros strings o timestamps
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime()) && str.length > 5) {
+    const dia = String(parsed.getDate()).padStart(2, '0');
+    const mes = String(parsed.getMonth() + 1).padStart(2, '0');
+    const anio = parsed.getFullYear();
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  return str;
+}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, ArrowRight, Database, Save, List, ShieldCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ArrowRight, Database, Save, List, ShieldCheck, BookOpen } from 'lucide-react';
 import ExcelUploader from './ExcelUploader';
-import { procesarComprobantes, calcularSaldos } from '../utils/calculos';
+import { procesarComprobantes, calcularSaldos, formatearFechaDDMMYYYY } from '../utils/calculos';
 import { exportarDashboardExcel } from '../utils/exportacion';
 import { exportarTxtAfip } from '../utils/exportacionTxt';
 import { supabase } from '../lib/supabase';
-import { CATEGORIAS_INFO, getCategoriaCliente } from './ClientesView';
+import { CATEGORIAS_INFO, getCategoriaCliente, obtenerCodigo3DCliente } from './ClientesView';
+import LibroIvaFoliadoModal from './LibroIvaFoliadoModal';
 
 export default function DashboardView() {
   const [clientes, setClientes] = useState([]);
@@ -14,6 +15,8 @@ export default function DashboardView() {
 
   const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [ordenClientes, setOrdenClientes] = useState('alfabetico'); // 'alfabetico' | 'numerico'
+  const [isFoliadoModalOpen, setIsFoliadoModalOpen] = useState(false);
 
   const [mesSeleccionado, setMesSeleccionado] = useState(String(new Date().getMonth() + 1));
   const [anioSeleccionado, setAnioSeleccionado] = useState(String(new Date().getFullYear()));
@@ -337,7 +340,7 @@ export default function DashboardView() {
             <tbody>
               {lista.map((item, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }} className="hover-row">
-                  <td style={{ padding: '0.75rem' }}>{item.fecha}</td>
+                  <td style={{ padding: '0.75rem', whiteSpace: 'nowrap', fontWeight: 600 }}>{formatearFechaDDMMYYYY(item.fecha)}</td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>{item.tipoComp} {item.puntoVenta}-{item.numero}</td>
                   <td style={{ padding: '0.75rem' }}>{item.razon_social}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatMoney(item.neto)}</td>
@@ -424,26 +427,50 @@ export default function DashboardView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <Database className="primary-text" size={32} />
           <div style={{ flex: 1, minWidth: '280px' }}>
-            <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-main)', fontWeight: 600 }}>
-              Seleccionar Cliente ({clientes.filter(cliente => {
-                const cat = getCategoriaCliente(cliente);
-                const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
-                const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
-                return coincideCategoria && coincideTexto;
-              }).length} disponibles)
-            </label>
-            <select className="input-field" value={selectedClienteId} onChange={handleClienteChange} style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', width: '100%', maxWidth: '520px', fontWeight: 600 }}>
-              <option value="">-- Elige un cliente para ver su resumen --</option>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.3rem' }}>
+              <label style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '0.88rem' }}>
+                Seleccionar Cliente ({clientes.filter(cliente => {
+                  const cat = getCategoriaCliente(cliente);
+                  const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
+                  const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
+                  return coincideCategoria && coincideTexto;
+                }).length} disponibles)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Orden:</span>
+                <select
+                  className="input-field"
+                  value={ordenClientes}
+                  onChange={e => setOrdenClientes(e.target.value)}
+                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.78rem', fontWeight: 700 }}
+                >
+                  <option value="alfabetico">Alfabético (A - Z)</option>
+                  <option value="numerico">Numérico (#001 - #999)</option>
+                </select>
+              </div>
+            </div>
+            <select className="input-field" value={selectedClienteId} onChange={handleClienteChange} style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', width: '100%', maxWidth: '560px', fontWeight: 600 }}>
+              <option value="">-- Elige un cliente para ver su Libro IVA --</option>
               {clientes.filter(cliente => {
                 const cat = getCategoriaCliente(cliente);
                 const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
                 const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
                 return coincideCategoria && coincideTexto;
-              }).map(c => {
+              })
+              .sort((a, b) => {
+                if (ordenClientes === 'numerico') {
+                  const codA = obtenerCodigo3DCliente(a, clientes.indexOf(a));
+                  const codB = obtenerCodigo3DCliente(b, clientes.indexOf(b));
+                  return codA.localeCompare(codB);
+                }
+                return (a.nombre || '').localeCompare(b.nombre || '');
+              })
+              .map(c => {
                 const cat = getCategoriaCliente(c);
+                const cod3d = obtenerCodigo3DCliente(c, clientes.indexOf(c));
                 return (
                   <option key={c.id} value={c.id}>
-                    [Tipo {cat}] {c.nombre} {c.ultima_sincronizacion !== 'Nunca' ? '(Sincronizado)' : '(Sin datos)'}
+                    #{cod3d} - [Tipo {cat}] {c.nombre} {c.ultima_sincronizacion !== 'Nunca' ? '(Sincronizado)' : '(Sin datos)'}
                   </option>
                 );
               })}
@@ -480,6 +507,21 @@ export default function DashboardView() {
                 <option value="D">Tipo D - Exento</option>
                 <option value="E">Tipo E - Observación</option>
               </select>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setIsFoliadoModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 700
+                }}
+              >
+                <BookOpen size={16} /> Libro IVA Foliado (Ley / Inspección)
+              </button>
             </div>
           )}
           {clienteActivo && clienteActivo.ultima_sincronizacion === 'Nunca' && (
@@ -667,6 +709,15 @@ export default function DashboardView() {
           </div>
         </div>
       </details>
+
+      {isFoliadoModalOpen && clienteActivo && (
+        <LibroIvaFoliadoModal
+          cliente={clienteActivo}
+          ventasLista={ventasStats.lista}
+          comprasLista={comprasStats.lista}
+          onClose={() => setIsFoliadoModalOpen(false)}
+        />
+      )}
 
       <style>{`
         .hover-row:hover { background: var(--bg-hover) !important; }

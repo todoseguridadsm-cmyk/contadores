@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Filter, Search, Calendar, TrendingUp, TrendingDown, DollarSign, Download, Eye, X, Edit3, Save, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { CATEGORIAS_INFO, getCategoriaCliente } from './ClientesView';
+import { CATEGORIAS_INFO, getCategoriaCliente, obtenerCodigo3DCliente } from './ClientesView';
 import { exportarPlanillaAnual12MesesExcel } from '../utils/exportacion';
 
 export default function AnualView() {
@@ -163,11 +163,14 @@ export default function AnualView() {
               onChange={e => setClienteActivoId(e.target.value)}
               style={{ fontWeight: 700, flex: 1, maxWidth: '420px', fontSize: '0.95rem' }}
             >
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>
-                  [Tipo {getCategoriaCliente(c)}] {c.nombre} ({c.cuit})
-                </option>
-              ))}
+              {clientes.map(c => {
+                const cod3d = obtenerCodigo3DCliente(c, clientes.indexOf(c));
+                return (
+                  <option key={c.id} value={c.id}>
+                    #{cod3d} - [Tipo {getCategoriaCliente(c)}] {c.nombre} ({c.cuit})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
