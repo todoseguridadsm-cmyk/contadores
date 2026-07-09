@@ -15,9 +15,55 @@ export default function DashboardView() {
   const [filtroCategoria, setFiltroCategoria] = useState('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [mesSeleccionado, setMesSeleccionado] = useState(String(new Date().getMonth() + 1));
+  const [anioSeleccionado, setAnioSeleccionado] = useState(String(new Date().getFullYear()));
+  const [guardandoAnual, setGuardandoAnual] = useState(false);
+
   const [ventasStats, setVentasStats] = useState({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
   const [comprasStats, setComprasStats] = useState({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
   const [saldoAnterior, setSaldoAnterior] = useState(0);
+
+  const handleGuardarEnResumenAnual = async () => {
+    if (!clienteActivo) return;
+    setGuardandoAnual(true);
+    try {
+      const historialAnual = clienteActivo.historial_anual || (clienteActivo.ventas_json && clienteActivo.ventas_json.historial_anual) || {};
+      const anioObj = historialAnual[anioSeleccionado] || {};
+      anioObj[mesSeleccionado] = {
+        mes: mesSeleccionado,
+        anio: anioSeleccionado,
+        ventasNeto: Number(ventasStats.totalNetoGravado || 0),
+        comprasNeto: Number(comprasStats.totalNetoGravado || 0),
+        ventasIva: Number(ventasStats.totalIVA || 0),
+        comprasIva: Number(comprasStats.totalIVA || 0),
+        ventasTotal: Number(ventasStats.totalGeneral || 0),
+        comprasTotal: Number(comprasStats.totalGeneral || 0),
+        fechaGuardado: new Date().toLocaleDateString('es-AR')
+      };
+      historialAnual[anioSeleccionado] = anioObj;
+
+      try {
+        await supabase
+          .from('clientes')
+          .update({ historial_anual: historialAnual })
+          .eq('id', clienteActivo.id);
+      } catch (e) {}
+
+      const ventasData = { ...ventasStats, historial_anual: historialAnual };
+      await supabase
+        .from('clientes')
+        .update({ ventas_json: ventasData })
+        .eq('id', clienteActivo.id);
+
+      alert(`✅ ¡Mes ${mesSeleccionado}/${anioSeleccionado} archivado en la nube para el Resumen Anualizado de ${clienteActivo.nombre}!`);
+      fetchClientes();
+    } catch (err) {
+      console.error(err);
+      alert('Error al archivar en nube: ' + err.message);
+    } finally {
+      setGuardandoAnual(false);
+    }
+  };
 
   useEffect(() => {
     fetchClientes();
@@ -404,17 +450,37 @@ export default function DashboardView() {
             </select>
           </div>
           {clienteActivo && (
-            <span style={{
-              padding: '0.4rem 0.85rem',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              background: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.bg || 'var(--bg-main)',
-              color: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color || 'var(--text-main)',
-              border: `1px solid ${CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color}`
-            }}>
-              Categoría: Tipo {getCategoriaCliente(clienteActivo)}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Tipo / Categoría:</span>
+              <select
+                value={getCategoriaCliente(clienteActivo)}
+                onChange={async (e) => {
+                  const nuevaCat = e.target.value;
+                  localStorage.setItem(`cliente_cat_${clienteActivo.id}`, nuevaCat);
+                  setClientes(prev => prev.map(c => c.id === clienteActivo.id ? { ...c, categoria: nuevaCat } : c));
+                  setClienteActivo({ ...clienteActivo, categoria: nuevaCat });
+                  try {
+                    await supabase.from('clientes').update({ categoria: nuevaCat }).eq('id', clienteActivo.id);
+                  } catch (err) {}
+                }}
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  background: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.bg || 'var(--bg-main)',
+                  color: CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color || 'var(--text-main)',
+                  border: `1px solid ${CATEGORIAS_INFO[getCategoriaCliente(clienteActivo)]?.color}`,
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="A">Tipo A - Gran Contribuyente</option>
+                <option value="B">Tipo B - Resp. Inscripto</option>
+                <option value="C">Tipo C - Monotributo</option>
+                <option value="D">Tipo D - Exento</option>
+                <option value="E">Tipo E - Observación</option>
+              </select>
+            </div>
           )}
           {clienteActivo && clienteActivo.ultima_sincronizacion === 'Nunca' && (
             <span style={{ color: 'var(--warning)', fontWeight: 500, fontSize: '0.85rem' }}>
@@ -423,6 +489,55 @@ export default function DashboardView() {
           )}
         </div>
       </div>
+
+      {/* Tarjeta para Archivar en Resumen Anual en la Nube */}
+      {clienteActivo && (
+        <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Save size={24} style={{ color: 'var(--primary)' }} />
+            <div>
+              <h3 style={{ fontSize: '0.95rem', marginBottom: '0.2rem', color: 'var(--text-main)' }}>Archivar en Resumen Anualizado en la Nube</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Guarda los totales del mes en Supabase (Ventas Netas: {formatMoney(ventasStats.totalNetoGravado)} | Compras Netas: {formatMoney(comprasStats.totalNetoGravado)}) para ver la evolución anual.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <select
+              className="input-field"
+              value={mesSeleccionado}
+              onChange={e => setMesSeleccionado(e.target.value)}
+              style={{ width: '135px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}
+            >
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+            <select
+              className="input-field"
+              value={anioSeleccionado}
+              onChange={e => setAnioSeleccionado(e.target.value)}
+              style={{ width: '95px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}
+            >
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+            <button className="btn btn-primary" onClick={handleGuardarEnResumenAnual} disabled={guardandoAnual} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+              {guardandoAnual ? 'Guardando...' : 'Archivar Mes en Nube'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 4 Paneles Principales de Libro IVA (Facturas y Notas de Crédito con Desglose Completo) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>

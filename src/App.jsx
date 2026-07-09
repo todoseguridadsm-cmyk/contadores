@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut, Database, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, Search, Plus, Upload, ShieldCheck, LogOut, Database, Bell, Calendar } from 'lucide-react';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 import TicketsView from './components/TicketsView';
@@ -7,6 +7,7 @@ import LoginView from './components/LoginView';
 import UsuariosView from './components/UsuariosView';
 import BackupView from './components/BackupView';
 import BandejaView from './components/BandejaView';
+import AnualView from './components/AnualView';
 import { supabase } from './lib/supabase';
 import './App.css';
 
@@ -79,13 +80,14 @@ function App() {
     if (!loggedUser) return false;
     if (loggedUser.role === 'superadmin') return true;
     if (tab === 'usuarios' || tab === 'backup') return false; // Solo superadmin
-    if (tab === 'bandeja') return true; // Todos pueden ver la bandeja
+    if (tab === 'bandeja' || tab === 'anual') return true; // Todos pueden ver bandeja y resumen anual
     return loggedUser.permisos && loggedUser.permisos.includes(tab);
   };
 
   const renderContent = () => {
     if (activeTab === 'usuarios' && hasAccess('usuarios')) return <UsuariosView />;
     if (activeTab === 'dashboard' && hasAccess('dashboard')) return <DashboardView />;
+    if (activeTab === 'anual' && hasAccess('anual')) return <AnualView />;
     if (activeTab === 'clientes' && hasAccess('clientes')) return <ClientesView />;
     if (activeTab === 'tickets' && hasAccess('tickets')) return <TicketsView />;
     if (activeTab === 'backup' && hasAccess('backup')) return <BackupView />;
@@ -135,6 +137,13 @@ function App() {
             <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
               <LayoutDashboard size={20} />
               <span>Libro IVA</span>
+            </button>
+          )}
+
+          {hasAccess('anual') && (
+            <button className={`nav-item ${activeTab === 'anual' ? 'active' : ''}`} onClick={() => setActiveTab('anual')}>
+              <Calendar size={20} />
+              <span>Resumen Anual (Nube)</span>
             </button>
           )}
 
