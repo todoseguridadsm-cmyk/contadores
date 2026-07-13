@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, Image as ImageIcon, CheckCircle, AlertCircle, Trash2, Upload, Plus, X, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { procesarComprobantes } from '../utils/calculos';
 
 export default function TicketsView() {
   const [isDragging, setIsDragging] = useState(false);
@@ -171,42 +172,69 @@ export default function TicketsView() {
     setIsUploadingToDB(true);
 
     try {
-      const dbPayload = ticketsParaSubir.map(ticket => {
-        // Generar fecha compatible con DB (YYYY-MM-DD)
-        let fechaDb;
-        if (ticket.data.fechaDb) {
-          fechaDb = ticket.data.fechaDb; // Viene de carga manual
-        } else {
-          // Asumimos que el OCR devolvió DD/MM/YYYY
-          const parts = ticket.data.fecha.split('/');
+      // 1. Guardar en Libro IVA Compras (compras_json) del Cliente en Supabase
+      const clienteId = selectedCliente || ticketsParaSubir[0]?.clienteId;
+      if (clienteId && import.meta.env.VITE_SUPABASE_URL) {
+        const { data: clienteData } = await supabase
+          .from('clientes')
+          .select('compras_json')
+          .eq('id', clienteId)
+          .single();
+
+        const comprasActuales = clienteData?.compras_json?.lista || [];
+        const nuevosItems = ticketsParaSubir.map(ticket => ({
+          fecha: ticket.data.fecha || new Date().toLocaleDateString('es-AR'),
+          tipoComp: 'Ticket / Factura B',
+          puntoVenta: '0001',
+          numero: Math.floor(Math.random() * 900000 + 100000).toString(),
+          cuit: (ticket.data.cuit_emisor || '').replace(/\D/g, ''),
+          razon_social: ticket.data.razon_social || 'Comercio Ticket',
+          neto: Number(ticket.data.neto || 0),
+          noGravado: 0,
+          exento: 0,
+          iva: Number(ticket.data.iva || 0),
+          total: Number(ticket.data.total || 0)
+        }));
+
+        const listaCombinada = [...comprasActuales, ...nuevosItems];
+        const nuevoResumenCompras = procesarComprobantes(listaCombinada);
+
+        await supabase
+          .from('clientes')
+          .update({ compras_json: nuevoResumenCompras })
+          .eq('id', clienteId);
+      }
+
+      // 2. Opcional: Insertar también en tabla comprobantes si existe (no fallar si no existe)
+      try {
+        const dbPayload = ticketsParaSubir.map(ticket => {
+          let fechaDb = ticket.data.fechaDb || new Date().toISOString().split('T')[0];
+          const parts = (ticket.data.fecha || '').split('/');
           if (parts.length === 3) {
             fechaDb = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-          } else {
-            fechaDb = new Date().toISOString().split('T')[0];
           }
-        }
-
-        return {
-          cliente_id: ticket.clienteId,
-          tipo: 'recibido', // Todos los tickets son gastos/compras
-          fecha: fechaDb,
-          punto_venta: '00001',
-          numero: Math.floor(Math.random() * 100000).toString().padStart(8, '0'),
-          tipo_comprobante: '006', // 006 es Factura B
-          razon_social_emisor: ticket.data.razon_social,
-          cuit_emisor: ticket.data.cuit_emisor.replace(/\D/g, ''),
-          neto_gravado: ticket.data.neto,
-          no_gravado: 0,
-          exento: 0,
-          iva: ticket.data.iva,
-          total: ticket.data.total,
-          neto21: ticket.data.neto, 
-          iva21: ticket.data.iva
-        };
-      });
-
-      const { error } = await supabase.from('comprobantes').insert(dbPayload);
-      if (error) throw new Error(error.message);
+          return {
+            cliente_id: ticket.clienteId,
+            tipo: 'recibido',
+            fecha: fechaDb,
+            punto_venta: '00001',
+            numero: Math.floor(Math.random() * 100000).toString().padStart(8, '0'),
+            tipo_comprobante: '006',
+            razon_social_emisor: ticket.data.razon_social,
+            cuit_emisor: (ticket.data.cuit_emisor || '').replace(/\D/g, ''),
+            neto_gravado: ticket.data.neto,
+            no_gravado: 0,
+            exento: 0,
+            iva: ticket.data.iva,
+            total: ticket.data.total,
+            neto21: ticket.data.neto, 
+            iva21: ticket.data.iva
+          };
+        });
+        await supabase.from('comprobantes').insert(dbPayload);
+      } catch (tableErr) {
+        // Ignoramos error de schema cache si la tabla comprobantes no existe
+      }
 
       // Si fue exitoso, cambiamos el estado visual
       setUploadedFiles(prev => prev.map(f => {
@@ -214,6 +242,7 @@ export default function TicketsView() {
         return f;
       }));
 
+      alert("✅ ¡Tickets guardados e integrados exitosamente al Libro IVA Compras del cliente!");
     } catch (err) {
       alert("Error al guardar en la base de datos: " + err.message);
     } finally {

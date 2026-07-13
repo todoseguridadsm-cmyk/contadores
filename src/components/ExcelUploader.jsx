@@ -41,9 +41,18 @@ export default function ExcelUploader({ onDataLoaded, title = "Cargar Excel AFIP
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
-      // AFIP Excels usually have a header row somewhere, mostly row 1 or 2
-      // Converting to JSON
-      const json = XLSX.utils.sheet_to_json(worksheet);
+      // AFIP Excels usually have a header row somewhere (row 0, 1 or 2)
+      const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      let headerRowIdx = 0;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const rowStr = (rows[i] || []).join(' ').toLowerCase();
+        if (rowStr.includes('fecha') || rowStr.includes('tipo') || rowStr.includes('neto') || rowStr.includes('total')) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+
+      const json = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIdx });
       onDataLoaded(json, type);
     };
     reader.readAsArrayBuffer(file);

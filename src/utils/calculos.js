@@ -32,24 +32,38 @@ export function procesarComprobantes(comprobantes) {
       return parseFloat(str) || 0;
     };
 
-    const neto = parseImporte(comp.neto ?? comp['Importe Neto Gravado'] ?? comp['Imp. Neto Gravado Total'] ?? comp['Neto']);
-    const noGravado = parseImporte(comp.noGravado ?? comp['Importe No Gravado'] ?? comp['Conceptos No Gravados'] ?? comp['Imp. Tot. Conc. No Gravados']);
-    const exento = parseImporte(comp.exento ?? comp['Importe Exento'] ?? comp['Imp. Op. Exentas']);
-    const total = parseImporte(comp.total ?? comp['Importe Total'] ?? comp['Imp. Total']);
+    // Búsqueda flexible por nombres de columna AFIP/Excel
+    const getField = (...keys) => {
+      for (const k of keys) {
+        if (comp[k] !== undefined && comp[k] !== null && comp[k] !== '') return comp[k];
+      }
+      // Búsqueda insensibles a mayúsculas
+      const lowerKeys = keys.map(k => String(k).toLowerCase());
+      for (const prop of Object.keys(comp)) {
+        if (lowerKeys.includes(prop.toLowerCase())) return comp[prop];
+      }
+      return 0;
+    };
+
+    const neto = parseImporte(getField('neto', 'Neto Gravado', 'Importe Neto Gravado', 'Imp. Neto Gravado Total', 'Imp. Neto Gravado', 'Neto gravado', 'Gravado'));
+    const noGravado = parseImporte(getField('noGravado', 'Importe No Gravado', 'Conceptos No Gravados', 'Imp. Tot. Conc. No Gravados', 'No Gravado'));
+    const exento = parseImporte(getField('exento', 'Importe Exento', 'Imp. Op. Exentas', 'Exento'));
+    const total = parseImporte(getField('total', 'Total', 'Importe Total', 'Imp. Total'));
     
     // Percepciones e impuestos
-    const percNac = parseImporte(comp.percNac ?? comp['Percepciones Nacionales']);
-    const percIIBB = parseImporte(comp.percIIBB ?? comp['Percepciones Ingresos Brutos'] ?? comp['Percepciones IIBB']);
-    const percMuni = parseImporte(comp.percMun ?? comp['Percepciones Impuestos Municipales']);
-    const impInt = parseImporte(comp.impInt ?? comp['Impuestos Internos']);
+    const percNac = parseImporte(getField('percNac', 'Percepciones Nacionales'));
+    const percIIBB = parseImporte(getField('percIIBB', 'Percepciones Ingresos Brutos', 'Percepciones IIBB'));
+    const percMuni = parseImporte(getField('percMun', 'Percepciones Impuestos Municipales'));
+    const impInt = parseImporte(getField('impInt', 'Impuestos Internos'));
 
     // IVA directo o alícuotas
-    let totalIva = parseImporte(comp.iva ?? comp['IVA'] ?? comp['Total IVA'] ?? comp['Imp. Total IVA'] ?? comp['Importe IVA']);
+    let iva21 = parseImporte(getField('IVA 21%', 'iva21', 'Importe IVA 21%'));
+    let iva105 = parseImporte(getField('IVA 10,5%', 'iva105', 'Importe IVA 10,5%'));
+    let iva27 = parseImporte(getField('IVA 27%', 'iva27', 'Importe IVA 27%'));
+
+    let totalIva = parseImporte(getField('iva', 'IVA', 'Total IVA', 'Imp. Total IVA', 'Importe IVA'));
+    const alicSum = iva21 + iva105 + iva27;
     if (totalIva === 0) {
-      const iva21 = parseImporte(comp['IVA 21%'] ?? comp.iva21);
-      const iva105 = parseImporte(comp['IVA 10,5%'] ?? comp.iva105);
-      const iva27 = parseImporte(comp['IVA 27%'] ?? comp.iva27);
-      const alicSum = iva21 + iva105 + iva27;
       if (alicSum > 0) {
         totalIva = alicSum;
       } else if (neto > 0 && total > neto) {
@@ -58,6 +72,15 @@ export function procesarComprobantes(comprobantes) {
         if (diff > 0 && diff <= neto * 0.28) {
           totalIva = Number(diff.toFixed(2));
         }
+      }
+    }
+
+    // Si tenemos totalIva pero no vinieron desglosadas alícuotas, intentamos asignar 21% o 10.5%
+    if (totalIva > 0 && alicSum === 0) {
+      if (neto > 0 && Math.abs(totalIva - (neto * 0.105)) < 2) {
+        iva105 = totalIva;
+      } else {
+        iva21 = totalIva;
       }
     }
     
@@ -85,11 +108,11 @@ export function procesarComprobantes(comprobantes) {
 
     resumen.lista.push({
       fecha: comp.fecha || comp['Fecha'] || comp['Fecha de Emisión'] || '',
-      tipoComp: comp.tipoComp || comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || '',
+      tipoComp: comp.tipoComp || comp['Tipo'] || comp['Tipo de Comprobante'] || comp['Tipo Comprobante'] || comp['Comprobante'] || '',
       puntoVenta: comp.puntoVenta || comp['Punto de Venta'] || '',
       numero: comp.numero || comp['Número'] || comp['Número Desde'] || '',
       cuit: comp.cuit || comp['Nro. Doc. Receptor'] || comp['Nro. Doc. Emisor'] || comp['CUIT'] || '',
-      razon_social: comp.razon_social || comp['Denominación Receptor'] || comp['Denominación Emisor'] || comp['Razón Social'] || '',
+      razon_social: comp.razon_social || comp['Denominación Receptor'] || comp['Denominación Emisor'] || comp['Denominación Comprador'] || comp['Denominación Vendedor'] || comp['Razón Social'] || '',
       neto,
       noGravado,
       exento,
@@ -98,6 +121,9 @@ export function procesarComprobantes(comprobantes) {
       percMun: percMuni,
       impInt,
       iva: totalIva,
+      iva21,
+      iva105,
+      iva27,
       total
     });
   });

@@ -159,18 +159,35 @@ app.post('/api/sync-afip', async (req, res) => {
     await page.type('input[name="F1:password"]', clave_fiscal, { delay: 30 });
     await page.click('input[id="F1:btnIngresar"]');
 
-    console.log('[BOT] -> Paso 4: Esperando validación de portal principal...');
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
-    console.log('[BOT] ¡Login exitoso! Estamos en el portal.');
+    console.log('[BOT] -> Paso 4: Verificando validación del portal principal...');
+    await new Promise(r => setTimeout(r, 4000));
+
+    // Verificar si falló el login por captcha, clave errónea o aviso bloqueante
+    const bodyText = await page.evaluate(() => document.body?.innerText || '');
+    const lowerBody = bodyText.toLowerCase();
+    if (lowerBody.includes('captcha') || lowerBody.includes('clave incorrecta') || lowerBody.includes('credenciales incorrectas') || lowerBody.includes('usuario incorrecto')) {
+      throw new Error('Autenticación AFIP fallida: El captcha o la Clave Fiscal ingresada es incorrecta. Verificá tus credenciales en afip.gob.ar');
+    }
+
+    // Intentar cerrar popups/carteles de ARCA (Avisos, Domicilio Fiscal, etc.)
+    await page.evaluate(() => {
+      const botones = Array.from(document.querySelectorAll('button, a, .btn'));
+      botones.forEach(b => {
+        const txt = (b.innerText || b.textContent || '').toLowerCase();
+        if (txt.includes('cerrar') || txt.includes('omitir') || txt.includes('entendido')) {
+          try { b.click(); } catch(e){}
+        }
+      });
+    });
 
     // 2. BUSCADOR
     console.log('[BOT] -> Paso 5: Escribiendo "Mis Comprobantes" en el Buscador...');
-    const searchSelector = '#buscadorInput, input[type="search"], input[placeholder*="cesit"], input[placeholder*="trámites"]';
+    const searchSelector = '#buscadorInput, input[type="search"], input[placeholder*="cesit"], input[placeholder*="trámites"], input[placeholder*="Buscar"]';
     try {
       await page.waitForSelector(searchSelector, { visible: true, timeout: 20000 });
     } catch (err) {
       const dump = await page.evaluate(() => document.body.innerText);
-      throw new Error(`buscadorInput timeout. Dump: ${dump.substring(0, 400)}`);
+      throw new Error(`AFIP requiere acción manual previa (cartel bloqueante o trámite pendiente en ARCA). Inicia sesión en afip.gob.ar, cerrá el aviso y reintentá.`);
     }
     await page.click(searchSelector);
     await new Promise(r => setTimeout(r, 1000));
@@ -407,35 +424,43 @@ app.post('/api/sync-afip', async (req, res) => {
         if (csvEntry) {
           const lines = zip.readAsText(csvEntry, 'utf8').split('\n');
           if (lines.length > 1) {
-            const headers = lines[0].split(';');
-            const idxFecha = headers.indexOf('"Fecha de Emisión"');
-            const idxTipoComp = headers.indexOf('"Tipo de Comprobante"');
-            const idxPuntoVenta = headers.indexOf('"Punto de Venta"');
-            const idxNumero = headers.indexOf('"Número Desde"') !== -1 ? headers.indexOf('"Número Desde"') : headers.indexOf('"Nro. Desde"');
-            const idxCuitRec = headers.indexOf('"Nro. Doc. Receptor"');
-            const idxCuitEmi = headers.indexOf('"Nro. Doc. Emisor"');
-            const idxRazonRec = headers.indexOf('"Denominación Receptor"');
-            const idxRazonEmi = headers.indexOf('"Denominación Emisor"');
-            const idxNeto = headers.indexOf('"Imp. Neto Gravado Total"');
-            const idxNoGravado = headers.indexOf('"Imp. Tot. Conc. No Gravados"');
-            const idxExento = headers.indexOf('"Imp. Op. Exentas"');
-            const idxPercNac = headers.indexOf('"Percepciones Nacionales"');
-            const idxPercIIBB = headers.indexOf('"Percepciones Ingresos Brutos"');
-            const idxPercMun = headers.indexOf('"Percepciones Impuestos Municipales"');
-            const idxImpInt = headers.indexOf('"Impuestos Internos"');
-            let idxIva = headers.indexOf('"Total IVA"');
-            if (idxIva === -1) idxIva = headers.findIndex(h => h.includes('Total IVA') || h.includes('"IVA"') || h === '"IVA"');
-            const idxTotal = headers.indexOf('"Imp. Total"');
+            const headers = lines[0].split(';').map(h => h.replace(/"/g, '').trim());
+            const findColIdx = (...searchNames) => {
+              for (const name of searchNames) {
+                const i = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+                if (i !== -1) return i;
+              }
+              for (const name of searchNames) {
+                const i = headers.findIndex(h => h.toLowerCase().includes(name.toLowerCase()));
+                if (i !== -1) return i;
+              }
+              return -1;
+            };
+
+            const idxFecha = findColIdx('Fecha de Emisión', 'Fecha');
+            const idxTipoComp = findColIdx('Tipo de Comprobante', 'Tipo');
+            const idxPuntoVenta = findColIdx('Punto de Venta');
+            const idxNumero = findColIdx('Número Desde', 'Nro. Desde', 'Número');
+            const idxCuitRec = findColIdx('Nro. Doc. Receptor');
+            const idxCuitEmi = findColIdx('Nro. Doc. Emisor');
+            const idxRazonRec = findColIdx('Denominación Receptor', 'Denominación Comprador');
+            const idxRazonEmi = findColIdx('Denominación Emisor', 'Denominación Vendedor');
+            const idxNeto = findColIdx('Imp. Neto Gravado Total', 'Imp. Neto Gravado', 'Neto Gravado', 'Neto');
+            const idxNoGravado = findColIdx('Imp. Tot. Conc. No Gravados', 'Conceptos No Gravados', 'No Gravado');
+            const idxExento = findColIdx('Imp. Op. Exentas', 'Importe Exento', 'Exento');
+            const idxPercNac = findColIdx('Percepciones Nacionales');
+            const idxPercIIBB = findColIdx('Percepciones Ingresos Brutos', 'Percepciones IIBB');
+            const idxPercMun = findColIdx('Percepciones Impuestos Municipales');
+            const idxImpInt = findColIdx('Impuestos Internos');
+            const idxIva = findColIdx('Total IVA', 'Importe IVA', 'IVA');
+            const idxTotal = findColIdx('Imp. Total', 'Importe Total', 'Total');
 
             // Alícuotas
-            const idxIva105 = headers.indexOf('"IVA 10,5%"');
-            const idxNeto105 = headers.indexOf('"Imp. Neto Gravado IVA 10,5%"');
-            const idxIva21 = headers.indexOf('"IVA 21%"');
-            const idxNeto21 = headers.indexOf('"Imp. Neto Gravado IVA 21%"');
-            const idxIva27 = headers.indexOf('"IVA 27%"');
-            const idxNeto27 = headers.indexOf('"Imp. Neto Gravado IVA 27%"');
+            const idxIva105 = findColIdx('IVA 10,5%');
+            const idxIva21 = findColIdx('IVA 21%');
+            const idxIva27 = findColIdx('IVA 27%');
             
-            if (idxNeto !== -1 || idxTotal !== -1) {
+            if (idxNeto !== -1 || idxTotal !== -1 || idxFecha !== -1) {
               for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim() === '') continue;
                 const cols = lines[i].split(';');
