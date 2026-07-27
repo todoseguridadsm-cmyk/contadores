@@ -157,21 +157,30 @@ export default function AnualView() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>SELECCIONAR CLIENTE PARA PLANILLA ANUAL:</span>
-            <select
-              className="input-field"
-              value={clienteActivoId}
-              onChange={e => setClienteActivoId(e.target.value)}
-              style={{ fontWeight: 700, flex: 1, maxWidth: '420px', fontSize: '0.95rem' }}
-            >
-              {clientes.map(c => {
-                const cod3d = obtenerCodigo3DCliente(c, clientes.indexOf(c));
-                return (
-                  <option key={c.id} value={c.id}>
-                    #{cod3d} - [Tipo {getCategoriaCliente(c)}] {c.nombre} ({c.cuit})
-                  </option>
-                );
-              })}
-            </select>
+            <div style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
+              <input 
+                list="anual-clientes-list"
+                className="input-field" 
+                placeholder="Escribe nombre, CUIT o #ID..."
+                value={clienteActivoId ? clientes.find(c => c.id == clienteActivoId)?.nombre : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const match = clientes.find(c => c.nombre === val || `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || c.cuit === val);
+                  if (match) setClienteActivoId(match.id);
+                }}
+                style={{ width: '100%', fontWeight: 700, fontSize: '0.95rem' }}
+              />
+              <datalist id="anual-clientes-list">
+                {clientes.map(c => {
+                  const cod3d = obtenerCodigo3DCliente(c);
+                  return (
+                    <option key={c.id} value={c.nombre}>
+                      #{cod3d} - [Tipo {getCategoriaCliente(c)}] (CUIT: {c.cuit})
+                    </option>
+                  );
+                })}
+              </datalist>
+            </div>
           </div>
 
           {clienteSeleccionado && (

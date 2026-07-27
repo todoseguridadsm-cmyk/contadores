@@ -459,15 +459,15 @@ export default function DashboardView() {
               })
               .sort((a, b) => {
                 if (ordenClientes === 'numerico') {
-                  const codA = obtenerCodigo3DCliente(a, clientes.indexOf(a));
-                  const codB = obtenerCodigo3DCliente(b, clientes.indexOf(b));
+                  const codA = obtenerCodigo3DCliente(a);
+                  const codB = obtenerCodigo3DCliente(b);
                   return codA.localeCompare(codB);
                 }
                 return (a.nombre || '').localeCompare(b.nombre || '');
               })
               .map(c => {
                 const cat = getCategoriaCliente(c);
-                const cod3d = obtenerCodigo3DCliente(c, clientes.indexOf(c));
+                const cod3d = obtenerCodigo3DCliente(c);
                 return (
                   <option key={c.id} value={c.id}>
                     #{cod3d} - [Tipo {cat}] {c.nombre} {c.ultima_sincronizacion !== 'Nunca' ? '(Sincronizado)' : '(Sin datos)'}

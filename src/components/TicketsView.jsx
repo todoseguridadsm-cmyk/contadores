@@ -15,8 +15,13 @@ export default function TicketsView() {
     fecha: new Date().toISOString().split('T')[0],
     razon_social: '',
     cuit_emisor: '',
+    tipoComp: 'Factura B',
+    puntoVenta: '0001',
+    numero: '',
     total: '',
-    iva: ''
+    iva: '',
+    no_gravado: '',
+    exento: ''
   });
 
   const [isUploadingToDB, setIsUploadingToDB] = useState(false);
@@ -141,7 +146,7 @@ export default function TicketsView() {
 
     const [y, m, d] = manualForm.fecha.split('-');
     const fechaFormat = `${d}/${m}/${y}`;
-    const neto = (parseFloat(manualForm.total) - parseFloat(manualForm.iva)).toFixed(2);
+    const netoCalc = (parseFloat(manualForm.total || 0) - parseFloat(manualForm.iva || 0) - parseFloat(manualForm.no_gravado || 0) - parseFloat(manualForm.exento || 0)).toFixed(2);
 
     const manualTicket = {
       id: Math.random().toString(36).substring(7),
@@ -150,18 +155,27 @@ export default function TicketsView() {
       clienteId: selectedCliente,
       data: {
         fecha: fechaFormat,
-        fechaDb: manualForm.fecha, // Guardamos la YYYY-MM-DD para la BD
+        fechaDb: manualForm.fecha,
         razon_social: manualForm.razon_social,
         cuit_emisor: manualForm.cuit_emisor,
-        total: parseFloat(manualForm.total),
-        iva: parseFloat(manualForm.iva),
-        neto: parseFloat(neto)
+        tipoComp: manualForm.tipoComp,
+        puntoVenta: manualForm.puntoVenta.padStart(5, '0'),
+        numero: manualForm.numero.padStart(8, '0'),
+        total: parseFloat(manualForm.total || 0),
+        iva: parseFloat(manualForm.iva || 0),
+        no_gravado: parseFloat(manualForm.no_gravado || 0),
+        exento: parseFloat(manualForm.exento || 0),
+        neto: parseFloat(netoCalc)
       }
     };
 
     setUploadedFiles(prev => [...prev, manualTicket]);
     setShowManualModal(false);
-    setManualForm({ fecha: new Date().toISOString().split('T')[0], razon_social: '', cuit_emisor: '', total: '', iva: '' });
+    setManualForm({ 
+      fecha: new Date().toISOString().split('T')[0], 
+      razon_social: '', cuit_emisor: '', tipoComp: 'Factura B', 
+      puntoVenta: '0001', numero: '', total: '', iva: '', no_gravado: '', exento: '' 
+    });
   };
 
   const handleSubirABaseDeDatos = async () => {
@@ -184,14 +198,14 @@ export default function TicketsView() {
         const comprasActuales = clienteData?.compras_json?.lista || [];
         const nuevosItems = ticketsParaSubir.map(ticket => ({
           fecha: ticket.data.fecha || new Date().toLocaleDateString('es-AR'),
-          tipoComp: 'Ticket / Factura B',
-          puntoVenta: '0001',
-          numero: Math.floor(Math.random() * 900000 + 100000).toString(),
+          tipoComp: ticket.data.tipoComp || 'Ticket / Factura B',
+          puntoVenta: ticket.data.puntoVenta || '0001',
+          numero: ticket.data.numero || Math.floor(Math.random() * 900000 + 100000).toString(),
           cuit: (ticket.data.cuit_emisor || '').replace(/\D/g, ''),
           razon_social: ticket.data.razon_social || 'Comercio Ticket',
           neto: Number(ticket.data.neto || 0),
-          noGravado: 0,
-          exento: 0,
+          noGravado: Number(ticket.data.no_gravado || 0),
+          exento: Number(ticket.data.exento || 0),
           iva: Number(ticket.data.iva || 0),
           total: Number(ticket.data.total || 0)
         }));
@@ -223,8 +237,8 @@ export default function TicketsView() {
             razon_social_emisor: ticket.data.razon_social,
             cuit_emisor: (ticket.data.cuit_emisor || '').replace(/\D/g, ''),
             neto_gravado: ticket.data.neto,
-            no_gravado: 0,
-            exento: 0,
+            no_gravado: ticket.data.no_gravado || 0,
+            exento: ticket.data.exento || 0,
             iva: ticket.data.iva,
             total: ticket.data.total,
             neto21: ticket.data.neto, 
@@ -283,17 +297,30 @@ export default function TicketsView() {
           {/* Selector de Cliente */}
           <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>Selecciona a qué cliente asignar los tickets:</label>
-            <select 
-              className="input-field" 
-              value={selectedCliente} 
-              onChange={(e) => setSelectedCliente(e.target.value)}
-              style={{ cursor: 'pointer', appearance: 'auto' }}
-            >
-              <option value="">-- Seleccionar Cliente --</option>
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre} (CUIT: {c.cuit})</option>
-              ))}
-            </select>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '500px' }}>
+              <input 
+                list="clientes-list"
+                className="input-field" 
+                placeholder="Escribe nombre, CUIT o #ID para buscar..."
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const match = clientes.find(c => `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || c.cuit === val);
+                  if (match) setSelectedCliente(match.id);
+                  else setSelectedCliente('');
+                }}
+                style={{ width: '100%' }}
+              />
+              <datalist id="clientes-list">
+                {clientes.map(c => (
+                  <option key={c.id} value={`${c.nombre} (CUIT: ${c.cuit})`}>#{c.id}</option>
+                ))}
+              </datalist>
+              {selectedCliente && (
+                <div style={{ marginTop: '0.75rem', color: 'var(--success)', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <CheckCircle size={16} /> Cliente seleccionado: {clientes.find(c => c.id === selectedCliente)?.nombre}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Drag & Drop Area */}
@@ -425,6 +452,41 @@ export default function TicketsView() {
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>CUIT Emisor</label>
                   <input type="text" className="input-field" style={{ width: '100%' }} placeholder="Sin guiones" value={manualForm.cuit_emisor} onChange={e => setManualForm({...manualForm, cuit_emisor: e.target.value})} required />
                 </div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Tipo Comprobante</label>
+                    <select className="input-field" style={{ width: '100%' }} value={manualForm.tipoComp} onChange={e => setManualForm({...manualForm, tipoComp: e.target.value})} required>
+                      <option value="Factura A">Factura A</option>
+                      <option value="Factura B">Factura B</option>
+                      <option value="Factura C">Factura C</option>
+                      <option value="Nota de Credito A">Nota de Crédito A</option>
+                      <option value="Nota de Credito B">Nota de Crédito B</option>
+                      <option value="Nota de Credito C">Nota de Crédito C</option>
+                      <option value="Nota de Debito">Nota de Débito</option>
+                      <option value="Ticket">Ticket</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Punto Venta</label>
+                    <input type="text" className="input-field" style={{ width: '100%' }} placeholder="Ej: 0001" value={manualForm.puntoVenta} onChange={e => setManualForm({...manualForm, puntoVenta: e.target.value})} required />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Número</label>
+                    <input type="text" className="input-field" style={{ width: '100%' }} placeholder="Ej: 12345678" value={manualForm.numero} onChange={e => setManualForm({...manualForm, numero: e.target.value})} required />
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>No Gravado ($)</label>
+                    <input type="number" step="0.01" className="input-field" style={{ width: '100%' }} placeholder="0.00" value={manualForm.no_gravado} onChange={e => setManualForm({...manualForm, no_gravado: e.target.value})} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Exento ($)</label>
+                    <input type="number" step="0.01" className="input-field" style={{ width: '100%' }} placeholder="0.00" value={manualForm.exento} onChange={e => setManualForm({...manualForm, exento: e.target.value})} />
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Monto IVA ($)</label>

@@ -19,6 +19,7 @@ export function obtenerCodigo3DCliente(cliente, idx = 0) {
   if (!cliente) return '000';
   if (cliente.codigo_3d) return String(cliente.codigo_3d).padStart(3, '0');
   if (cliente.nro_cliente) return String(cliente.nro_cliente).padStart(3, '0');
+  if (cliente.id && !isNaN(Number(cliente.id))) return String(cliente.id).padStart(3, '0');
   const num = (idx + 101);
   return String(num).padStart(3, '0');
 }
@@ -379,7 +380,9 @@ export default function ClientesView() {
     const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
     const coincideTexto = !searchTerm || 
       cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      cliente.cuit?.includes(searchTerm);
+      cliente.cuit?.includes(searchTerm) ||
+      cliente.id?.toString() === searchTerm ||
+      obtenerCodigo3DCliente(cliente).includes(searchTerm);
     return coincideCategoria && coincideTexto;
   });
 
@@ -436,7 +439,7 @@ export default function ClientesView() {
             <input
               type="text"
               className="input-field"
-              placeholder="Buscar cliente o CUIT..."
+              placeholder="Buscar por nombre, CUIT o #ID..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               style={{ paddingLeft: '2.25rem', width: '100%', fontSize: '0.85rem' }}
@@ -453,6 +456,7 @@ export default function ClientesView() {
             >
               <option value="alfabetico">Alfabético (A - Z)</option>
               <option value="numerico">N° Cliente (#001 - #999)</option>
+              <option value="cuit">CUIT (Menor a Mayor)</option>
             </select>
           </div>
         </div>
@@ -524,6 +528,9 @@ export default function ClientesView() {
                   const codA = obtenerCodigo3DCliente(a, clientes.indexOf(a));
                   const codB = obtenerCodigo3DCliente(b, clientes.indexOf(b));
                   return codA.localeCompare(codB);
+                }
+                if (ordenDirectorio === 'cuit') {
+                  return (a.cuit || '').localeCompare(b.cuit || '');
                 }
                 return (a.nombre || '').localeCompare(b.nombre || '');
               })
