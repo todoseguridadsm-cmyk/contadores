@@ -36,6 +36,11 @@ export const exportarTxtAfip = (ventasLista, comprasLista, nombreCliente) => {
     if (str.includes('FACTURA C')) return '011';
     if (str.includes('NOTA DE DÉBITO C') || str.includes('NOTA DE DEBITO C')) return '012';
     if (str.includes('NOTA DE CRÉDITO C') || str.includes('NOTA DE CREDITO C')) return '013';
+    if (str.includes('TICKET')) {
+      if (str.includes('A')) return '081';
+      if (str.includes('C')) return '082';
+      return '083';
+    }
     return '006'; // Default fallback
   };
 

@@ -120,6 +120,18 @@ export default function DashboardView() {
     exportarTxtAfip(ventasStats.lista, comprasStats.lista, clienteActivo.nombre);
   };
 
+  const handleExportarTxtSoloFotos = () => {
+    if (!clienteActivo) return alert("Selecciona un cliente para exportar.");
+    const ventasFotos = (ventasStats.lista || []).filter(item => item.origen === 'foto');
+    const comprasFotos = (comprasStats.lista || []).filter(item => item.origen === 'foto');
+    
+    if (ventasFotos.length === 0 && comprasFotos.length === 0) {
+      return alert("No hay comprobantes cargados por foto/manuales en este mes.");
+    }
+    
+    exportarTxtAfip(ventasFotos, comprasFotos, `${clienteActivo.nombre}_SOLO_FOTOS`);
+  };
+
   const handleGuardarSaldo = async () => {
     if (!clienteActivo) return;
     const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
@@ -368,7 +380,10 @@ export default function DashboardView() {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn" onClick={handleExportarTxt} disabled={!clienteActivo} style={{ background: '#28a745', color: 'white', border: 'none', fontWeight: 'bold' }}>
-            Descargar TXTs AFIP
+            Descargar TXTs AFIP (Todo)
+          </button>
+          <button className="btn" onClick={handleExportarTxtSoloFotos} disabled={!clienteActivo} style={{ background: '#0284c7', color: 'white', border: 'none', fontWeight: 'bold' }} title="Descarga los comprobantes subidos por foto para declarar en ARCA">
+            Descargar TXTs (Solo Fotos)
           </button>
           <button className="btn btn-secondary" onClick={handleExportarExcel} disabled={!clienteActivo}>
             Exportar a Excel
@@ -546,23 +561,24 @@ export default function DashboardView() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <select
-              className="input-field"
+              className="input-field notranslate"
+              translate="no"
               value={mesSeleccionado}
               onChange={e => setMesSeleccionado(e.target.value)}
               style={{ width: '135px', fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}
             >
-              <option value="1">Enero</option>
-              <option value="2">Febrero</option>
-              <option value="3">Marzo</option>
-              <option value="4">Abril</option>
-              <option value="5">Mayo</option>
-              <option value="6">Junio</option>
-              <option value="7">Julio</option>
-              <option value="8">Agosto</option>
-              <option value="9">Septiembre</option>
-              <option value="10">Octubre</option>
-              <option value="11">Noviembre</option>
-              <option value="12">Diciembre</option>
+              <option className="notranslate" translate="no" value="1">Enero</option>
+              <option className="notranslate" translate="no" value="2">Febrero</option>
+              <option className="notranslate" translate="no" value="3">Marzo</option>
+              <option className="notranslate" translate="no" value="4">Abril</option>
+              <option className="notranslate" translate="no" value="5">Mayo</option>
+              <option className="notranslate" translate="no" value="6">Junio</option>
+              <option className="notranslate" translate="no" value="7">Julio</option>
+              <option className="notranslate" translate="no" value="8">Agosto</option>
+              <option className="notranslate" translate="no" value="9">Septiembre</option>
+              <option className="notranslate" translate="no" value="10">Octubre</option>
+              <option className="notranslate" translate="no" value="11">Noviembre</option>
+              <option className="notranslate" translate="no" value="12">Diciembre</option>
             </select>
             <select
               className="input-field"

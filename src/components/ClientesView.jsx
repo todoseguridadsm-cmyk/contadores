@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MoreHorizontal, Download, Edit2, Trash2, X, RefreshCw, Filter, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { procesarComprobantes } from '../utils/calculos';
 
 export const CATEGORIAS_INFO = {
   'A': { label: 'Tipo A - Gran Contribuyente', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
@@ -20,6 +21,16 @@ export function obtenerCodigo3DCliente(cliente, idx = 0) {
   if (cliente.codigo_3d) return String(cliente.codigo_3d).padStart(3, '0');
   if (cliente.nro_cliente) return String(cliente.nro_cliente).padStart(3, '0');
   if (cliente.id && !isNaN(Number(cliente.id))) return String(cliente.id).padStart(3, '0');
+  
+  if (cliente.id && typeof cliente.id === 'string') {
+    let hash = 0;
+    for (let i = 0; i < cliente.id.length; i++) {
+      hash = cliente.id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const num = Math.abs(hash % 900) + 100;
+    return String(num).padStart(3, '0');
+  }
+
   const num = (idx + 101);
   return String(num).padStart(3, '0');
 }
@@ -267,21 +278,52 @@ export default function ClientesView() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error desconocido');
 
+      // 1. Obtener los comprobantes cargados por foto en base de datos para no pisarlos
+      const { data: dbCliente } = await supabase
+        .from('clientes')
+        .select('compras_json, ventas_json')
+        .eq('id', cliente.id)
+        .single();
+      
+      const comprasPrevias = dbCliente?.compras_json?.lista || [];
+      const ventasPrevias = dbCliente?.ventas_json?.lista || [];
+
+      // Filtrar los que son de origen 'foto'
+      const fotosCompras = comprasPrevias.filter(item => item.origen === 'foto');
+      const fotosVentas = ventasPrevias.filter(item => item.origen === 'foto');
+
+      // Marcar los de AFIP con origen 'afip'
+      const afipCompras = (data.compras.lista || []).map(item => ({ ...item, origen: 'afip' }));
+      const afipVentas = (data.ventas.lista || []).map(item => ({ ...item, origen: 'afip' }));
+
+      // Unificar y recalcular totales
+      const comprasUnificadas = [...fotosCompras, ...afipCompras];
+      const ventasUnificadas = [...fotosVentas, ...afipVentas];
+
+      const comprasFinal = procesarComprobantes(comprasUnificadas);
+      const ventasFinal = procesarComprobantes(ventasUnificadas);
+
+      // Conservamos cualquier otra información (ej: notificaciones) que esté dentro de ventas_json
+      const ventasGuardar = {
+        ...ventasFinal,
+        notificaciones: dbCliente?.ventas_json?.notificaciones || []
+      };
+
       setSyncProgress(100);
       if (!isBulk) {
         setTimeout(() => {
-          alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${data.ventas.totalNetoGravado}\nCompras Netas: $${data.compras.totalNetoGravado}`);
+          alert(`Sincronización Exitosa para ${cliente.nombre}\nVentas Netas: $${ventasFinal.totalNetoGravado}\nCompras Netas: $${comprasFinal.totalNetoGravado}`);
         }, 100);
       }
       
-      // Actualizamos estado en base de datos junto con los cálculos json
+      // Actualizamos estado en base de datos junto con los cálculos json unificados
       const { error } = await supabase
         .from('clientes')
         .update({ 
           estado: 'Al día', 
           ultima_sincronizacion: new Date().toLocaleString(),
-          ventas_json: data.ventas,
-          compras_json: data.compras
+          ventas_json: ventasGuardar,
+          compras_json: comprasFinal
         })
         .eq('id', cliente.id);
       await fetchClientes();
@@ -378,8 +420,13 @@ export default function ClientesView() {
   const clientesFiltrados = clientes.filter(cliente => {
     const cat = getCategoriaCliente(cliente);
     const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
+    
+    const cleanSearch = searchTerm.trim().toLowerCase().replace(/\D/g, '');
+    const cleanCuit = (cliente.cuit || '').replace(/\D/g, '');
+    
     const coincideTexto = !searchTerm || 
       cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (cleanSearch && cleanCuit.includes(cleanSearch)) ||
       cliente.cuit?.includes(searchTerm) ||
       cliente.id?.toString() === searchTerm ||
       obtenerCodigo3DCliente(cliente).includes(searchTerm);

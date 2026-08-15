@@ -51,8 +51,13 @@ app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => 
 - "cuit_emisor": El CUIT de la empresa emisora (solo números, sin guiones).
 - "razon_social": El nombre de la empresa emisora.
 - "fecha": La fecha del comprobante en formato DD/MM/YYYY.
+- "tipoComp": Uno de los siguientes: "Factura A", "Factura B", "Factura C", "Nota de Crédito A", "Nota de Crédito B", "Nota de Crédito C", "Nota de Débito", "Ticket". Si no se indica, deducirlo o usar "Factura B".
+- "puntoVenta": Punto de venta (ej. "0001" o "00001"). Si no se encuentra, usar "0001".
+- "numero": El número del comprobante (sólo el número correlativo de 8 dígitos, ej: "00123456").
 - "neto": El importe neto gravado (como número, sin símbolos).
 - "iva": El importe del IVA (como número).
+- "no_gravado": El importe de conceptos no gravados si los hay (como número, de lo contrario 0).
+- "exento": El importe exento si lo hay (como número, de lo contrario 0).
 - "total": El monto total del comprobante (como número).
 - "categoria": Sugiere una categoría (ej. Combustible, Supermercado, Gastos Generales).
 
@@ -83,8 +88,13 @@ Responde ÚNICAMENTE con el objeto JSON, sin formato markdown ni texto adicional
         cuit_emisor: parsedData.cuit_emisor || '',
         razon_social: parsedData.razon_social || 'Comercio Detectado',
         fecha: parsedData.fecha || new Date().toLocaleDateString('es-AR'),
+        tipoComp: parsedData.tipoComp || 'Factura B',
+        puntoVenta: String(parsedData.puntoVenta || '0001').padStart(4, '0'),
+        numero: String(parsedData.numero || '').padStart(8, '0'),
         neto: parseFloat(parsedData.neto) || 0,
         iva: parseFloat(parsedData.iva) || 0,
+        no_gravado: parseFloat(parsedData.no_gravado) || 0,
+        exento: parseFloat(parsedData.exento) || 0,
         total: parseFloat(parsedData.total) || 0,
         categoria: parsedData.categoria || 'Gastos Generales'
       }
@@ -591,7 +601,7 @@ app.post('/api/backup', async (req, res) => {
     const clientesJSON = JSON.stringify(clientes, null, 2);
 
     // 3. Setup Resend API
-    const resend = new Resend('re_JFjZKgsh_3CDwpMNYrcGLJ8kVd79s7aEd');
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     // 4. Send Email via Resend
     const { data, error } = await resend.emails.send({

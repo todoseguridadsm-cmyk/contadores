@@ -38,7 +38,16 @@ export default function AnualView() {
     }
   };
 
+  const [clientSearchText, setClientSearchText] = useState('');
   const clienteSeleccionado = clientes.find(c => c.id == clienteActivoId) || null;
+
+  useEffect(() => {
+    if (clienteSeleccionado) {
+      setClientSearchText(clienteSeleccionado.nombre);
+    } else {
+      setClientSearchText('');
+    }
+  }, [clienteActivoId, clientes]);
 
   const handleQuickChangeCategoria = async (clienteId, cat) => {
     localStorage.setItem(`cliente_cat_${clienteId}`, cat);
@@ -162,10 +171,11 @@ export default function AnualView() {
                 list="anual-clientes-list"
                 className="input-field" 
                 placeholder="Escribe nombre, CUIT o #ID..."
-                value={clienteActivoId ? clientes.find(c => c.id == clienteActivoId)?.nombre : ''}
+                value={clientSearchText}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const match = clientes.find(c => c.nombre === val || `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || c.cuit === val);
+                  setClientSearchText(val);
+                  const match = clientes.find(c => c.nombre === val || `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || String(c.id) === val || c.cuit === val);
                   if (match) setClienteActivoId(match.id);
                 }}
                 style={{ width: '100%', fontWeight: 700, fontSize: '0.95rem' }}
@@ -280,7 +290,7 @@ export default function AnualView() {
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-main)' }}>
                       <td style={{ padding: '0.65rem 1.25rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-main)' }}>
-                        {nombresMeses[idx]}
+                        <span className="notranslate" translate="no">{nombresMeses[idx]}</span>
                       </td>
 
                       {/* VENTAS NETO */}
@@ -452,7 +462,7 @@ export default function AnualView() {
               return (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--border-light)', background: c.id == clienteActivoId ? 'var(--secondary-bg)' : 'transparent' }}>
                   <td style={{ padding: '0.85rem 1.5rem', fontWeight: 600 }}>
-                    {c.nombre}
+                    <span style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>#{obtenerCodigo3DCliente(c)}</span>{c.nombre}
                   </td>
                   <td style={{ padding: '0.85rem 1.5rem' }}>
                     <span style={{

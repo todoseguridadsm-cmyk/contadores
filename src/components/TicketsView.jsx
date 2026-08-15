@@ -2,13 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { UploadCloud, Image as ImageIcon, CheckCircle, AlertCircle, Trash2, Upload, Plus, X, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { procesarComprobantes } from '../utils/calculos';
+import { obtenerCodigo3DCliente } from './ClientesView';
 
 export default function TicketsView() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState('');
-  
+  const [selectedClientSearchText, setSelectedClientSearchText] = useState('');
+
+  const handleUpdateTicketField = (id, field, value) => {
+    setUploadedFiles(prev => prev.map(f => {
+      if (f.id === id) {
+        const updatedData = { ...f.data };
+        if (['tipoComp', 'fecha', 'razon_social', 'cuit_emisor', 'puntoVenta', 'numero'].includes(field)) {
+          updatedData[field] = value;
+        } else {
+          updatedData[field] = parseFloat(value) || 0;
+        }
+        
+        // Auto-calcular Neto: neto = total - iva - no_gravado - exento
+        if (['total', 'iva', 'no_gravado', 'exento'].includes(field)) {
+          const tot = parseFloat(field === 'total' ? value : (updatedData.total || 0)) || 0;
+          const iva = parseFloat(field === 'iva' ? value : (updatedData.iva || 0)) || 0;
+          const noGrav = parseFloat(field === 'no_gravado' ? value : (updatedData.no_gravado || 0)) || 0;
+          const exen = parseFloat(field === 'exento' ? value : (updatedData.exento || 0)) || 0;
+          updatedData.neto = Number((tot - iva - noGrav - exen).toFixed(2));
+        }
+        
+        return { ...f, data: updatedData };
+      }
+      return f;
+    }));
+  };
+
   // Estado para Carga Manual
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualForm, setManualForm] = useState({
@@ -198,16 +225,17 @@ export default function TicketsView() {
         const comprasActuales = clienteData?.compras_json?.lista || [];
         const nuevosItems = ticketsParaSubir.map(ticket => ({
           fecha: ticket.data.fecha || new Date().toLocaleDateString('es-AR'),
-          tipoComp: ticket.data.tipoComp || 'Ticket / Factura B',
-          puntoVenta: ticket.data.puntoVenta || '0001',
-          numero: ticket.data.numero || Math.floor(Math.random() * 900000 + 100000).toString(),
+          tipoComp: ticket.data.tipoComp || 'Factura B',
+          puntoVenta: String(ticket.data.puntoVenta || '0001').padStart(4, '0'),
+          numero: String(ticket.data.numero || '').padStart(8, '0'),
           cuit: (ticket.data.cuit_emisor || '').replace(/\D/g, ''),
           razon_social: ticket.data.razon_social || 'Comercio Ticket',
           neto: Number(ticket.data.neto || 0),
           noGravado: Number(ticket.data.no_gravado || 0),
           exento: Number(ticket.data.exento || 0),
           iva: Number(ticket.data.iva || 0),
-          total: Number(ticket.data.total || 0)
+          total: Number(ticket.data.total || 0),
+          origen: 'foto'
         }));
 
         const listaCombinada = [...comprasActuales, ...nuevosItems];
@@ -302,17 +330,20 @@ export default function TicketsView() {
                 list="clientes-list"
                 className="input-field" 
                 placeholder="Escribe nombre, CUIT o #ID para buscar..."
+                value={selectedClientSearchText}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const match = clientes.find(c => `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || c.cuit === val);
-                  if (match) setSelectedCliente(match.id);
-                  else setSelectedCliente('');
+                  setSelectedClientSearchText(val);
+                  const match = clientes.find(c => `${c.nombre} (CUIT: ${c.cuit})` === val || c.id == val || String(c.id) === val || c.cuit === val || c.nombre === val);
+                  if (match) {
+                    setSelectedCliente(match.id);
+                  }
                 }}
                 style={{ width: '100%' }}
               />
               <datalist id="clientes-list">
                 {clientes.map(c => (
-                  <option key={c.id} value={`${c.nombre} (CUIT: ${c.cuit})`}>#{c.id}</option>
+                  <option key={c.id} value={`${c.nombre} (CUIT: ${c.cuit})`}>#{obtenerCodigo3DCliente(c)}</option>
                 ))}
               </datalist>
               {selectedCliente && (
@@ -365,67 +396,233 @@ export default function TicketsView() {
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Revisa que la IA haya extraído bien los montos antes de subirlos.</p>
               </div>
               
-              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.75rem 1rem' }}>Archivo</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Emisor (Razón Social)</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Fecha</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>IVA</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Total</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {uploadedFiles.map(file => (
-                    <tr key={file.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <ImageIcon size={16} className={file.status === '¡Subido!' ? "success-text" : "primary-text"} />
-                          <span style={{ maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={file.name}>
-                            {file.name}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: file.status === '¡Subido!' ? 'var(--success)' : file.status === 'Error' ? 'var(--danger)' : 'var(--warning)' }}>
-                          {file.status}
-                        </span>
-                      </td>
-
-                      {file.data ? (
-                        <>
-                          <td style={{ padding: '0.75rem 1rem' }}>
-                            <div style={{ fontWeight: 500 }}>{file.data.razon_social}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>CUIT: {file.data.cuit_emisor}</div>
-                          </td>
-                          <td style={{ padding: '0.75rem 1rem' }}>{file.data.fecha}</td>
-                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>{formatMoney(file.data.iva)}</td>
-                          <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--text-main)' }}>{formatMoney(file.data.total)}</td>
-                        </>
-                      ) : (
-                        <td colSpan="4" style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
-                          {file.status === 'Procesando (IA)...' ? 'Extrayendo datos con IA...' : file.errorMsg}
-                        </td>
-                      )}
-
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                        {file.status !== '¡Subido!' && (
-                          <button 
-                            onClick={() => handleRemoveTicket(file.id)}
-                            className="icon-btn" 
-                            style={{ color: 'var(--danger)', padding: '0.4rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}
-                            title="Eliminar ticket"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                        {file.status === '¡Subido!' && (
-                          <CheckCircle size={20} className="success-text" style={{ margin: '0 auto' }} />
-                        )}
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '1000px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '120px' }}>Archivo</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '110px' }}>Tipo</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '140px' }}>Punto Venta - Nro</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '220px' }}>Emisor (Razón / CUIT)</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '100px' }}>Fecha</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>IVA ($)</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>No Grav. ($)</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>Exento ($)</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>Neto Calc.</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '85px', textAlign: 'right' }}>Total ($)</th>
+                      <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center', width: '60px' }}>Acción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {uploadedFiles.map(file => (
+                      <tr key={file.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td style={{ padding: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <ImageIcon size={16} className={file.status === '¡Subido!' ? "success-text" : "primary-text"} />
+                            <span style={{ maxWidth: '100px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={file.name}>
+                              {file.name}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.7rem', color: file.status === '¡Subido!' ? 'var(--success)' : file.status === 'Error' ? 'var(--danger)' : 'var(--warning)' }}>
+                            {file.status}
+                          </span>
+                        </td>
+
+                        {file.data ? (
+                          <>
+                            {/* TIPO */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span>{file.data.tipoComp}</span>
+                              ) : (
+                                <select 
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', minHeight: 'auto' }}
+                                  value={file.data.tipoComp || 'Factura B'} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'tipoComp', e.target.value)}
+                                >
+                                  <option value="Factura A">Factura A</option>
+                                  <option value="Factura B">Factura B</option>
+                                  <option value="Factura C">Factura C</option>
+                                  <option value="Nota de Credito A">Nota de Crédito A</option>
+                                  <option value="Nota de Credito B">Nota de Crédito B</option>
+                                  <option value="Nota de Credito C">Nota de Crédito C</option>
+                                  <option value="Nota de Debito">Nota de Débito</option>
+                                  <option value="Ticket">Ticket</option>
+                                </select>
+                              )}
+                            </td>
+                            
+                            {/* PV - NRO */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span>{file.data.puntoVenta}-{file.data.numero}</span>
+                              ) : (
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                  <input 
+                                    type="text" 
+                                    className="input-field" 
+                                    style={{ padding: '0.2rem', fontSize: '0.8rem', width: '45px', textAlign: 'center' }} 
+                                    value={file.data.puntoVenta || ''} 
+                                    onChange={(e) => handleUpdateTicketField(file.id, 'puntoVenta', e.target.value)}
+                                    placeholder="PV"
+                                  />
+                                  <input 
+                                    type="text" 
+                                    className="input-field" 
+                                    style={{ padding: '0.2rem', fontSize: '0.8rem', width: '80px' }} 
+                                    value={file.data.numero || ''} 
+                                    onChange={(e) => handleUpdateTicketField(file.id, 'numero', e.target.value)}
+                                    placeholder="Número"
+                                  />
+                                </div>
+                              )}
+                            </td>
+
+                            {/* RAZON / CUIT */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <div>
+                                  <div style={{ fontWeight: 500 }}>{file.data.razon_social}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>CUIT: {file.data.cuit_emisor}</div>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                  <input 
+                                    type="text" 
+                                    className="input-field" 
+                                    style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%' }} 
+                                    value={file.data.razon_social || ''} 
+                                    onChange={(e) => handleUpdateTicketField(file.id, 'razon_social', e.target.value)}
+                                    placeholder="Razón Social"
+                                  />
+                                  <input 
+                                    type="text" 
+                                    className="input-field" 
+                                    style={{ padding: '0.2rem', fontSize: '0.75rem', width: '100%' }} 
+                                    value={file.data.cuit_emisor || ''} 
+                                    onChange={(e) => handleUpdateTicketField(file.id, 'cuit_emisor', e.target.value)}
+                                    placeholder="CUIT"
+                                  />
+                                </div>
+                              )}
+                            </td>
+
+                            {/* FECHA */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span>{file.data.fecha}</span>
+                              ) : (
+                                <input 
+                                  type="text" 
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%' }} 
+                                  value={file.data.fecha || ''} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'fecha', e.target.value)}
+                                  placeholder="DD/MM/YYYY"
+                                />
+                              )}
+                            </td>
+
+                            {/* IVA */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span style={{ float: 'right' }}>{formatMoney(file.data.iva)}</span>
+                              ) : (
+                                <input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', textAlign: 'right' }} 
+                                  value={file.data.iva !== undefined ? file.data.iva : ''} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'iva', e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              )}
+                            </td>
+
+                            {/* NO GRAVADO */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span style={{ float: 'right' }}>{formatMoney(file.data.no_gravado)}</span>
+                              ) : (
+                                <input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', textAlign: 'right' }} 
+                                  value={file.data.no_gravado !== undefined ? file.data.no_gravado : ''} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'no_gravado', e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              )}
+                            </td>
+
+                            {/* EXENTO */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span style={{ float: 'right' }}>{formatMoney(file.data.exento)}</span>
+                              ) : (
+                                <input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', textAlign: 'right' }} 
+                                  value={file.data.exento !== undefined ? file.data.exento : ''} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'exento', e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              )}
+                            </td>
+
+                            {/* NETO CALC */}
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>
+                              {formatMoney(file.data.neto)}
+                            </td>
+
+                            {/* TOTAL */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span style={{ fontWeight: 600, float: 'right' }}>{formatMoney(file.data.total)}</span>
+                              ) : (
+                                <input 
+                                  type="number" 
+                                  step="0.01"
+                                  className="input-field" 
+                                  style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', textAlign: 'right', fontWeight: 600 }} 
+                                  value={file.data.total !== undefined ? file.data.total : ''} 
+                                  onChange={(e) => handleUpdateTicketField(file.id, 'total', e.target.value)}
+                                  placeholder="0.00"
+                                />
+                              )}
+                            </td>
+                          </>
+                        ) : (
+                          <td colSpan="9" style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
+                            {file.status === 'Procesando (IA)...' ? 'Extrayendo datos con IA...' : file.errorMsg}
+                          </td>
+                        )}
+
+                        <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
+                          {file.status !== '¡Subido!' && (
+                            <button 
+                              onClick={() => handleRemoveTicket(file.id)}
+                              className="icon-btn" 
+                              style={{ color: 'var(--danger)', padding: '0.4rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}
+                              title="Eliminar ticket"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                          {file.status === '¡Subido!' && (
+                            <CheckCircle size={20} className="success-text" style={{ margin: '0 auto' }} />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
