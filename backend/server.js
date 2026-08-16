@@ -106,6 +106,61 @@ Responde ÚNICAMENTE con el objeto JSON, sin formato markdown ni texto adicional
   }
 });
 
+app.post('/api/scrape-atm', async (req, res) => {
+  const { cuit, clave_atm } = req.body;
+  if (!cuit || !clave_atm) return res.status(400).json({ error: 'Faltan credenciales de ATM' });
+
+  let browser;
+  try {
+    console.log(`\n==============================================`);
+    console.log(`[BOT ATM] INICIANDO ACCESO PARA CUIT: ${cuit}`);
+    console.log(`==============================================`);
+    
+    const isProduction = process.env.NODE_ENV === 'production';
+    browser = await puppeteer.launch({ 
+      headless: isProduction ? 'new' : false, 
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+      defaultViewport: null,
+      args: isProduction ? [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--window-size=1280,800'
+      ] : ['--window-size=1280,800']
+    });
+
+    const page = (await browser.pages())[0];
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.setViewport({ width: 1280, height: 800 });
+
+    // 1. Navegar a ATM
+    console.log("[BOT ATM] Navegando al portal de ATM...");
+    await page.goto('https://atm.mendoza.gov.ar/', { waitUntil: 'networkidle2', timeout: 45000 });
+    
+    // Sacar un screenshot para depurar el DOM
+    await page.screenshot({ path: path.join(__dirname, 'atm-debug-1-home.png'), fullPage: true });
+
+    // Enviar error temporal con aviso de construcción mientras se mapea el DOM
+    throw new Error('Robot de ATM en construcción (Captura de pantalla inicial completada para mapeo de selectores).');
+    
+  } catch (error) {
+    console.error("[BOT ATM] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  } finally {
+    if (browser) await browser.close();
+  }
+});
+
+
+app.post('/api/upload-atm-test', upload.single('atmFile'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  const uploadPath = path.join(__dirname, 'downloads', 'atm-test' + path.extname(req.file.originalname));
+  fs.writeFileSync(uploadPath, req.file.buffer);
+  console.log("Archivo ATM de prueba guardado en:", uploadPath);
+  res.json({ success: true, message: 'Archivo guardado para análisis por el bot' });
+});
+
 app.post('/api/sync-afip', async (req, res) => {
   let { cuit, clave_fiscal, fechaDesde, fechaHasta } = req.body;
   if (!cuit || !clave_fiscal) return res.status(400).json({ error: 'Faltan credenciales' });

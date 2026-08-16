@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MoreHorizontal, Download, Edit2, Trash2, X, RefreshCw, Filter, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { procesarComprobantes } from '../utils/calculos';
@@ -53,7 +53,11 @@ export default function ClientesView() {
   // Bulk Sync states
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   const [bulkStatusText, setBulkStatusText] = useState('');
-  const cancelBulkRef = React.useRef(false);
+  const cancelBulkRef = useRef(false);
+
+  // ATM Upload
+  const fileInputRef = useRef(null);
+  const [atmUploadClienteId, setAtmUploadClienteId] = useState(null);
 
   // Selector de Fechas para la Sincronización
   const [fechaDesde, setFechaDesde] = useState('');
@@ -63,6 +67,7 @@ export default function ClientesView() {
   const [nombre, setNombre] = useState('');
   const [cuit, setCuit] = useState('');
   const [claveFiscal, setClaveFiscal] = useState('');
+  const [claveAtm, setClaveAtm] = useState('');
   const [tipoContribuyente, setTipoContribuyente] = useState('FISICA');
   const [cuitRepresentante, setCuitRepresentante] = useState('');
   const [categoria, setCategoria] = useState('A');
@@ -125,6 +130,7 @@ export default function ClientesView() {
     setNombre('');
     setCuit('');
     setClaveFiscal('');
+    setClaveAtm('');
     setTipoContribuyente('FISICA');
     setCuitRepresentante('');
     setCategoria('A');
@@ -136,6 +142,7 @@ export default function ClientesView() {
     setNombre(cliente.nombre);
     setCuit(cliente.cuit);
     setClaveFiscal(cliente.clave_fiscal);
+    setClaveAtm(cliente.clave_atm || '');
     setTipoContribuyente(cliente.tipo_contribuyente || 'FISICA');
     setCuitRepresentante(cliente.cuit_representante || '');
     setCategoria(getCategoriaCliente(cliente));
@@ -153,14 +160,14 @@ export default function ClientesView() {
         localStorage.setItem(`cliente_cat_${editingId}`, categoria);
         const { error } = await supabase
           .from('clientes')
-          .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, categoria })
+          .update({ nombre, cuit, clave_fiscal: claveFiscal, clave_atm: claveAtm, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, categoria })
           .eq('id', editingId);
         
         if (error) {
            if (error.message.includes('categoria')) {
              await supabase
                .from('clientes')
-               .update({ nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
+               .update({ nombre, cuit, clave_fiscal: claveFiscal, clave_atm: claveAtm, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
                .eq('id', editingId);
            } else if (error.message.includes('tipo_contribuyente') || error.message.includes('cuit_representante')) {
                alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' (ambas tipo texto) a tu tabla 'clientes' en Supabase para usar esta función.");
@@ -172,6 +179,7 @@ export default function ClientesView() {
           nombre, 
           cuit, 
           clave_fiscal: claveFiscal,
+          clave_atm: claveAtm,
           tipo_contribuyente: tipoContribuyente,
           cuit_representante: cuitRepresentante,
           categoria,
@@ -353,6 +361,43 @@ export default function ClientesView() {
     }
   };
 
+  const handleSyncATM = (cliente) => {
+    setAtmUploadClienteId(cliente.id);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleATMFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !atmUploadClienteId) return;
+
+    const cliente = clientes.find(c => c.id === atmUploadClienteId);
+    setSyncingId(`atm-${cliente.id}`);
+    
+    try {
+      const formData = new FormData();
+      formData.append('atmFile', file);
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/upload-atm-test`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error subiendo archivo');
+      
+      alert("¡Archivo subido exitosamente al servidor para que el Bot lo analice!\nPor favor, decile a la IA que el archivo ya está subido.");
+    } catch (error) {
+      alert(`⚠️ ERROR AL SUBIR ARCHIVO ATM\n\n${error.message}`);
+    } finally {
+      setSyncingId(null);
+      setAtmUploadClienteId(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const renderModalContent = (title) => (
     <div className="card" style={{ width: '100%', maxWidth: '500px', position: 'relative' }}>
       <button 
@@ -406,6 +451,10 @@ export default function ClientesView() {
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Clave Fiscal (AFIP)</label>
           <input type="password" className="input-field" value={claveFiscal} onChange={(e) => setClaveFiscal(e.target.value)} required />
         </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, fontSize: '0.9rem', color: 'var(--text-main)' }}>Clave ATM (Mendoza) <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(Opcional)</span></label>
+          <input type="password" className="input-field" value={claveAtm} onChange={(e) => setClaveAtm(e.target.value)} placeholder="Dejar en blanco si ingresas por AFIP" />
+        </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
           <button type="button" className="btn btn-secondary" onClick={() => { setIsModalOpen(false); setIsEditModalOpen(false); }} style={{ flex: 1 }}>Cancelar</button>
@@ -435,6 +484,15 @@ export default function ClientesView() {
 
   return (
     <div className="content-area" style={{ position: 'relative' }}>
+      {/* Hidden File Input para ATM */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        accept=".xls,.xlsx,.csv,.txt" 
+        onChange={handleATMFileUpload} 
+      />
+      
       <div className="page-header">
         <div>
           <h1 className="page-title">Directorio de Clientes</h1>
@@ -647,12 +705,32 @@ export default function ClientesView() {
                           position: 'relative',
                           overflow: 'hidden',
                           border: '1px solid var(--border-color)',
+                          background: syncingId === `atm-${cliente.id}` ? 'var(--secondary-bg)' : 'transparent',
+                          color: syncingId === `atm-${cliente.id}` ? '#fff' : 'var(--primary)',
+                          minWidth: '90px'
+                        }}
+                        onClick={() => handleSyncATM(cliente)}
+                        disabled={syncingId === `atm-${cliente.id}` || syncingId === cliente.id}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative' }}>
+                          <RefreshCw size={14} className={syncingId === `atm-${cliente.id}` ? 'spin' : ''} style={{ marginRight: '4px' }} />
+                          {syncingId === `atm-${cliente.id}` ? `ATM...` : 'ATM'}
+                        </div>
+                      </button>
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ 
+                          padding: '0.25rem 0.5rem', 
+                          fontSize: '0.75rem',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          border: '1px solid var(--border-color)',
                           background: syncingId === cliente.id ? 'var(--secondary-bg)' : 'transparent',
                           color: syncingId === cliente.id ? '#fff' : 'inherit',
                           minWidth: '130px'
                         }}
                         onClick={() => handleSyncAFIP(cliente)}
-                        disabled={syncingId === cliente.id}
+                        disabled={syncingId === cliente.id || syncingId === `atm-${cliente.id}`}
                       >
                         {syncingId === cliente.id && (
                           <div style={{
@@ -669,7 +747,7 @@ export default function ClientesView() {
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative', textShadow: syncingId === cliente.id ? '0 1px 2px rgba(0,0,0,0.5)' : 'none' }}>
                           <RefreshCw size={14} className={syncingId === cliente.id ? 'spin' : ''} style={{ marginRight: '4px' }} />
-                          {syncingId === cliente.id ? `Trabajando... ${syncProgress}%` : 'Sincronizar'}
+                          {syncingId === cliente.id ? `Trabajando... ${syncProgress}%` : 'AFIP'}
                         </div>
                       </button>
                       <button className="icon-btn" title="Editar Cliente" onClick={() => openEditModal(cliente)}>
