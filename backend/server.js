@@ -461,8 +461,16 @@ app.post('/api/sync-afip', async (req, res) => {
     const AdmZip = require('adm-zip');
     const downloadedFiles = fs.readdirSync(downloadPath);
     
-    const zipEmitidos = downloadedFiles.find(f => f.endsWith('.zip') && f.includes('emitidos'));
-    const zipRecibidos = downloadedFiles.find(f => f.endsWith('.zip') && f.includes('recibidos'));
+    const getMostRecentFile = (keyword) => {
+      const files = downloadedFiles
+        .filter(f => (f.toLowerCase().endsWith('.zip') || f.toLowerCase().endsWith('.csv')) && f.toLowerCase().includes(keyword.toLowerCase()))
+        .map(f => ({ name: f, time: fs.statSync(path.join(downloadPath, f)).mtime.getTime() }))
+        .sort((a, b) => b.time - a.time);
+      return files.length > 0 ? files[0].name : null;
+    };
+
+    const zipEmitidos = getMostRecentFile('emitidos');
+    const zipRecibidos = getMostRecentFile('recibidos');
     
     const parseZipCSV = (fileName) => {
       let stats = { 
@@ -484,12 +492,21 @@ app.post('/api/sync-afip', async (req, res) => {
       if (!fileName) return stats;
       
       try {
-        const zip = new AdmZip(path.join(downloadPath, fileName));
-        const csvEntry = zip.getEntries().find(e => e.entryName.endsWith('.csv'));
-        if (csvEntry) {
-          const lines = zip.readAsText(csvEntry, 'utf8').split('\n');
-          if (lines.length > 1) {
-            const headers = lines[0].split(';').map(h => h.replace(/"/g, '').trim());
+        let lines = [];
+        const filePath = path.join(downloadPath, fileName);
+        if (fileName.toLowerCase().endsWith('.zip')) {
+          const zip = new AdmZip(filePath);
+          const csvEntry = zip.getEntries().find(e => e.entryName.toLowerCase().endsWith('.csv'));
+          if (csvEntry) {
+            lines = zip.readAsText(csvEntry, 'utf8').split('\n');
+          }
+        } else if (fileName.toLowerCase().endsWith('.csv')) {
+          const fileContent = fs.readFileSync(filePath, 'latin1');
+          lines = fileContent.split('\n');
+        }
+
+        if (lines.length > 1) {
+          const headers = lines[0].split(';').map(h => h.replace(/"/g, '').trim());
             const findColIdx = (...searchNames) => {
               for (const name of searchNames) {
                 const i = headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
