@@ -133,6 +133,13 @@ function App() {
         </div>
         
         <nav className="sidebar-nav">
+          {hasAccess('clientes') && (
+            <button className={`nav-item ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
+              <Users size={20} />
+              <span>Clientes & Robot</span>
+            </button>
+          )}
+
           {hasAccess('dashboard') && (
             <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
               <LayoutDashboard size={20} />
@@ -158,13 +165,6 @@ function App() {
                   {unreadCount}
                 </span>
               )}
-            </button>
-          )}
-
-          {hasAccess('clientes') && (
-            <button className={`nav-item ${activeTab === 'clientes' ? 'active' : ''}`} onClick={() => setActiveTab('clientes')}>
-              <Users size={20} />
-              <span>Clientes & Robot</span>
             </button>
           )}
 

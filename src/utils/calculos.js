@@ -124,7 +124,8 @@ export function procesarComprobantes(comprobantes) {
       iva21,
       iva105,
       iva27,
-      total
+      total,
+      origen: comp.origen || 'afip'
     });
   });
 
