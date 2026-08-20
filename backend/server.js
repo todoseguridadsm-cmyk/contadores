@@ -631,7 +631,6 @@ app.post('/api/sync-afip', async (req, res) => {
               }
             }
           }
-        }
       } catch (e) {
         console.error(`Error leyendo ${fileName}:`, e);
       }
