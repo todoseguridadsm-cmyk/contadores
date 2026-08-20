@@ -538,8 +538,11 @@ app.post('/api/sync-afip', async (req, res) => {
             const idxTotal = findColIdx('Imp. Total', 'Importe Total', 'Total');
 
             // Alícuotas
+            const idxNeto105 = findColIdx('Neto 10,5%', 'Neto Gravado 10,5%');
             const idxIva105 = findColIdx('IVA 10,5%');
+            const idxNeto21 = findColIdx('Neto 21%', 'Neto Gravado 21%');
             const idxIva21 = findColIdx('IVA 21%');
+            const idxNeto27 = findColIdx('Neto 27%', 'Neto Gravado 27%');
             const idxIva27 = findColIdx('IVA 27%');
             
             if (idxNeto !== -1 || idxTotal !== -1 || idxFecha !== -1) {
