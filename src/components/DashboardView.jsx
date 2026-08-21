@@ -26,12 +26,34 @@ export default function DashboardView() {
   const [comprasStats, setComprasStats] = useState({ totalNetoGravado: 0, totalIVA: 0, cantidadComprobantes: 0, lista: [] });
   const [saldoAnterior, setSaldoAnterior] = useState(0);
 
+  const getMesAnio = (fechaStr) => {
+    if (!fechaStr) return { mes: null, anio: null };
+    const f = formatearFechaDDMMYYYY(fechaStr);
+    if (!f) return { mes: null, anio: null };
+    const p = f.split('/');
+    if (p.length === 3) return { mes: p[1], anio: p[2] };
+    return { mes: null, anio: null };
+  };
+
+  const listaVentasFiltrada = (ventasStats?.lista || []).filter(item => {
+    const { mes, anio } = getMesAnio(item.fecha);
+    return mes === mesSeleccionado && anio === anioSeleccionado;
+  });
+
+  const listaComprasFiltrada = (comprasStats?.lista || []).filter(item => {
+    const { mes, anio } = getMesAnio(item.fecha);
+    return mes === mesSeleccionado && anio === anioSeleccionado;
+  });
+
+  const ventasMensuales = procesarComprobantes(listaVentasFiltrada);
+  const comprasMensuales = procesarComprobantes(listaComprasFiltrada);
+
   const handleGuardarEnResumenAnual = async () => {
     if (!clienteActivo) return;
     setGuardandoAnual(true);
     
     // 1. Calcular y guardar el saldo técnico para el próximo mes
-    const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
+    const resultadoMensual = calcularSaldos(ventasMensuales, comprasMensuales, saldoAnterior);
     const nuevoSaldo = resultadoMensual.nuevoSaldoAFavor || 0;
     
     try {
@@ -54,12 +76,12 @@ export default function DashboardView() {
       anioObj[mesSeleccionado] = {
         mes: mesSeleccionado,
         anio: anioSeleccionado,
-        ventasNeto: Number(ventasStats.totalNetoGravado || 0),
-        comprasNeto: Number(comprasStats.totalNetoGravado || 0),
-        ventasIva: Number(ventasStats.totalIVA || 0),
-        comprasIva: Number(comprasStats.totalIVA || 0),
-        ventasTotal: Number(ventasStats.totalGeneral || 0),
-        comprasTotal: Number(comprasStats.totalGeneral || 0),
+        ventasNeto: Number(ventasMensuales.totalNetoGravado || 0),
+        comprasNeto: Number(comprasMensuales.totalNetoGravado || 0),
+        ventasIva: Number(ventasMensuales.totalIVA || 0),
+        comprasIva: Number(comprasMensuales.totalIVA || 0),
+        ventasTotal: Number(ventasMensuales.totalGeneral || 0),
+        comprasTotal: Number(comprasMensuales.totalGeneral || 0),
         fechaGuardado: new Date().toLocaleDateString('es-AR')
       };
       historialAnual[anioSeleccionado] = anioObj;
@@ -131,8 +153,8 @@ export default function DashboardView() {
 
   const handleExportarExcel = () => {
     if (!clienteActivo) return alert("Selecciona un cliente para exportar.");
-    const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
-    exportarDashboardExcel(ventasStats, comprasStats, resultadoMensual, `${clienteActivo.nombre}_LibroIVA`);
+    const resultadoMensual = calcularSaldos(ventasMensuales, comprasMensuales, saldoAnterior);
+    exportarDashboardExcel(ventasMensuales, comprasMensuales, resultadoMensual, `${clienteActivo.nombre}_LibroIVA`);
   };
 
   const handleExportarTxt = () => {
@@ -142,8 +164,8 @@ export default function DashboardView() {
 
   const handleExportarTxtSoloFotos = () => {
     if (!clienteActivo) return alert("Selecciona un cliente para exportar.");
-    const ventasFotos = (ventasStats.lista || []).filter(item => item.origen === 'foto');
-    const comprasFotos = (comprasStats.lista || []).filter(item => item.origen === 'foto');
+    const ventasFotos = (ventasMensuales.lista || []).filter(c => c.origen === 'foto');
+    const comprasFotos = (comprasMensuales.lista || []).filter(c => c.origen === 'foto');
     
     if (ventasFotos.length === 0 && comprasFotos.length === 0) {
       return alert("No hay comprobantes cargados por foto/manuales en este mes.");
@@ -161,7 +183,6 @@ export default function DashboardView() {
     }
   };
 
-  const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
   const formatMoney = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(amount) || 0);
 
   const obtenerDesglose = (stats) => {
@@ -223,8 +244,8 @@ export default function DashboardView() {
     return res;
   };
 
-  const desgloseVentas = obtenerDesglose(ventasStats);
-  const desgloseCompras = obtenerDesglose(comprasStats);
+  const desgloseVentas = obtenerDesglose(ventasMensuales);
+  const desgloseCompras = obtenerDesglose(comprasMensuales);
 
   const renderPanelContable = ({ numero, titulo, icon: Icon, colorClass, datos, tipoIva, esDevolucion = false }) => {
     const total = datos?.total || 0;
@@ -568,7 +589,7 @@ export default function DashboardView() {
             <div>
               <h3 style={{ fontSize: '0.95rem', marginBottom: '0.2rem', color: 'var(--text-main)' }}>Archivar en Resumen Anualizado en la Nube</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Guarda los totales del mes en Supabase (Ventas Netas: {formatMoney(ventasStats.totalNetoGravado)} | Compras Netas: {formatMoney(comprasStats.totalNetoGravado)}) para ver la evolución anual.
+                Guarda los totales del mes en Supabase (Ventas Netas: {formatMoney(ventasMensuales.totalNetoGravado)} | Compras Netas: {formatMoney(comprasMensuales.totalNetoGravado)}) para ver la evolución anual.
               </p>
             </div>
           </div>
@@ -659,7 +680,7 @@ export default function DashboardView() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
             <span className="text-white" style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>
-              {formatMoney(resultadoMensual.percepcionesNacionales + resultadoMensual.percepcionesIIBB + resultadoMensual.percepcionesMunicipales)}
+              {formatMoney((ventasMensuales.totalPercepcionesNacionales || 0) + (ventasMensuales.totalPercepcionesIIBB || 0) + (ventasMensuales.totalPercepcionesMunicipales || 0))}
             </span>
           </div>
           <p className="text-white-50" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>Sirve para cancelar VEP o IIBB</p>
@@ -718,8 +739,8 @@ export default function DashboardView() {
           </div>
         </div>
 
-      {renderTablaDetalle(ventasStats.lista, 'Ventas Emitidas', 'success')}
-      {renderTablaDetalle(comprasStats.lista, 'Compras Recibidas', 'danger')}
+      {renderTablaDetalle(ventasMensuales.lista, 'Ventas Emitidas', 'success')}
+      {renderTablaDetalle(comprasMensuales.lista, 'Compras Recibidas', 'danger')}
 
       {/* Zona Manual Ocultable */}
       <details style={{ marginTop: '2rem', cursor: 'pointer' }}>
@@ -737,8 +758,8 @@ export default function DashboardView() {
       {isFoliadoModalOpen && clienteActivo && (
         <LibroIvaFoliadoModal
           cliente={clienteActivo}
-          ventasLista={ventasStats.lista}
-          comprasLista={comprasStats.lista}
+          ventasLista={ventasMensuales.lista}
+          comprasLista={comprasMensuales.lista}
           onClose={() => setIsFoliadoModalOpen(false)}
         />
       )}
