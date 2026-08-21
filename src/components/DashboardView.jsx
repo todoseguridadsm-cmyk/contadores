@@ -47,6 +47,7 @@ export default function DashboardView() {
 
   const ventasMensuales = procesarComprobantes(listaVentasFiltrada);
   const comprasMensuales = procesarComprobantes(listaComprasFiltrada);
+  const resultadoMensual = calcularSaldos(ventasMensuales, comprasMensuales, saldoAnterior);
 
   const handleGuardarEnResumenAnual = async () => {
     if (!clienteActivo) return;
