@@ -666,7 +666,7 @@ export default function TicketsView() {
                             </td>
                           </>
                         ) : (
-                          <td colSpan="9" style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
+                          <td colSpan="10" style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
                             {file.status === 'Procesando (IA)...' ? 'Extrayendo datos con IA...' : file.errorMsg}
                           </td>
                         )}
