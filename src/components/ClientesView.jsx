@@ -314,7 +314,8 @@ export default function ClientesView() {
       // Conservamos cualquier otra información (ej: notificaciones) que esté dentro de ventas_json
       const ventasGuardar = {
         ...ventasFinal,
-        notificaciones: dbCliente?.ventas_json?.notificaciones || []
+        notificaciones: dbCliente?.ventas_json?.notificaciones || [],
+        historial_anual: dbCliente?.ventas_json?.historial_anual || {}
       };
 
       setSyncProgress(100);
