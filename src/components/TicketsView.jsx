@@ -52,12 +52,14 @@ export default function TicketsView() {
     razon_social: '',
     cuit_emisor: '',
     tipoComp: 'Factura B',
-    puntoVenta: '0001',
     numero: '',
     total: '',
     iva: '',
     no_gravado: '',
-    exento: ''
+    exento: '',
+    tipo_combustible: 'ninguno',
+    litros: '',
+    itc_discriminado: ''
   });
 
   const [isUploadingToDB, setIsUploadingToDB] = useState(false);
@@ -183,6 +185,13 @@ export default function TicketsView() {
     const [y, m, d] = manualForm.fecha.split('-');
     const fechaFormat = `${d}/${m}/${y}`;
     const netoCalc = (parseFloat(manualForm.total || 0) - parseFloat(manualForm.iva || 0) - parseFloat(manualForm.no_gravado || 0) - parseFloat(manualForm.exento || 0)).toFixed(2);
+    
+    // Calcular ITC
+    let pagoACuentaIva = 0;
+    if (manualForm.tipo_combustible === 'diesel') {
+      const itcTotal = parseFloat(manualForm.itc_discriminado || 0);
+      pagoACuentaIva = Number((itcTotal * 0.45).toFixed(2));
+    }
 
     const manualTicket = {
       id: Math.random().toString(36).substring(7),
@@ -201,7 +210,12 @@ export default function TicketsView() {
         iva: parseFloat(manualForm.iva || 0),
         no_gravado: parseFloat(manualForm.no_gravado || 0),
         exento: parseFloat(manualForm.exento || 0),
-        neto: parseFloat(netoCalc)
+        neto: parseFloat(netoCalc),
+        tipo_combustible: manualForm.tipo_combustible,
+        litros: parseFloat(manualForm.litros || 0),
+        itc_discriminado: parseFloat(manualForm.itc_discriminado || 0),
+        itc_total: parseFloat(manualForm.itc_discriminado || 0),
+        pago_a_cuenta_iva: pagoACuentaIva
       }
     };
 
@@ -210,7 +224,8 @@ export default function TicketsView() {
     setManualForm({ 
       fecha: new Date().toISOString().split('T')[0], 
       razon_social: '', cuit_emisor: '', tipoComp: 'Factura B', 
-      puntoVenta: '0001', numero: '', total: '', iva: '', no_gravado: '', exento: '' 
+      puntoVenta: '0001', numero: '', total: '', iva: '', no_gravado: '', exento: '',
+      tipo_combustible: 'ninguno', litros: '', itc_discriminado: ''
     });
   };
 
@@ -683,7 +698,7 @@ export default function TicketsView() {
         {/* Carga Manual Modal */}
         {showManualModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="card glass" style={{ width: '400px', padding: '2rem' }}>
+            <div className="card glass" style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: 0 }}>Carga Manual de Ticket</h3>
                 <button className="icon-btn" onClick={() => setShowManualModal(false)}><X size={20} /></button>
@@ -726,6 +741,29 @@ export default function TicketsView() {
                   </div>
                 </div>
                 
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Combustible</label>
+                    <select className="input-field" style={{ width: '100%' }} value={manualForm.tipo_combustible} onChange={e => setManualForm({...manualForm, tipo_combustible: e.target.value})}>
+                      <option value="ninguno">No Combustible</option>
+                      <option value="nafta">Nafta</option>
+                      <option value="diesel">Diesel / Gas Oil</option>
+                    </select>
+                  </div>
+                  {manualForm.tipo_combustible === 'diesel' && (
+                    <>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Litros</label>
+                        <input type="number" step="0.01" className="input-field" style={{ width: '100%' }} placeholder="Ej: 100" value={manualForm.litros} onChange={e => setManualForm({...manualForm, litros: e.target.value})} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Monto Total ITC</label>
+                        <input type="number" step="0.01" className="input-field" style={{ width: '100%' }} placeholder="0.00" value={manualForm.itc_discriminado} onChange={e => setManualForm({...manualForm, itc_discriminado: e.target.value})} />
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>No Gravado ($)</label>
