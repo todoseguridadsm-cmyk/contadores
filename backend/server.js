@@ -366,15 +366,15 @@ app.post('/api/sync-afip', async (req, res) => {
     await newPage.click('#buscarComprobantes');
     
     console.log('[BOT] -> Esperando grilla de resultados (Ventas)...');
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 8000));
 
     await newPage.evaluate(() => {
       const links = Array.from(document.querySelectorAll('a, button'));
       const btnCSV = links.find(el => el.textContent.includes('CSV') || (el.title && el.title.includes('CSV')));
       if (btnCSV) btnCSV.click();
     });
-    console.log('[BOT] -> ¡CSV de Ventas descargándose! Pausando 5 segundos...');
-    await new Promise(r => setTimeout(r, 5000));
+    console.log('[BOT] -> ¡CSV de Ventas descargándose! Pausando 15 segundos...');
+    await new Promise(r => setTimeout(r, 15000));
 
     // ================= EXTRACCIÓN RECIBIDOS =================
     console.log('[BOT] -> Paso 7: Volviendo al inicio de Mis Comprobantes para extraer RECIBIDOS (Compras)...');
@@ -446,15 +446,15 @@ app.post('/api/sync-afip', async (req, res) => {
     await newPage.click('#buscarComprobantes');
     
     console.log('[BOT] -> Esperando grilla de resultados (Compras)...');
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 8000));
 
     await newPage.evaluate(() => {
       const links = Array.from(document.querySelectorAll('a, button'));
       const btnCSV = links.find(el => el.textContent.includes('CSV') || (el.title && el.title.includes('CSV')));
       if (btnCSV) btnCSV.click();
     });
-    console.log('[BOT] -> ¡CSV de Compras descargándose! Pausando 5 segundos...');
-    await new Promise(r => setTimeout(r, 5000));
+    console.log('[BOT] -> ¡CSV de Compras descargándose! Pausando 15 segundos...');
+    await new Promise(r => setTimeout(r, 15000));
 
     // ================= LECTURA DE ARCHIVOS =================
     console.log('[BOT] -> Analizando los archivos ZIP descargados...');
