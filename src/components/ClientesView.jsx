@@ -698,26 +698,27 @@ export default function ClientesView() {
                   </td>
                   <td style={{ padding: '0.75rem 0.8rem', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ 
-                          padding: '0.25rem 0.5rem', 
-                          fontSize: '0.75rem',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          border: '1px solid var(--border-color)',
-                          background: syncingId === `atm-${cliente.id}` ? 'var(--secondary-bg)' : 'transparent',
-                          color: syncingId === `atm-${cliente.id}` ? '#fff' : 'var(--primary)',
-                          minWidth: '90px'
-                        }}
-                        onClick={() => handleSyncATM(cliente)}
-                        disabled={syncingId === `atm-${cliente.id}` || syncingId === cliente.id}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, position: 'relative' }}>
-                          <RefreshCw size={14} className={syncingId === `atm-${cliente.id}` ? 'spin' : ''} style={{ marginRight: '4px' }} />
-                          {syncingId === `atm-${cliente.id}` ? `ATM...` : 'ATM'}
-                        </div>
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem' }}>
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ 
+                            padding: '0.25rem 0.5rem', 
+                            fontSize: '0.75rem',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-main)',
+                            color: 'var(--text-muted)',
+                            opacity: 0.6,
+                            cursor: 'not-allowed',
+                            minWidth: '90px'
+                          }}
+                          disabled
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            ATM
+                          </div>
+                        </button>
+                        <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>Próximamente</span>
+                      </div>
                       <button 
                         className="btn btn-secondary" 
                         style={{ 
