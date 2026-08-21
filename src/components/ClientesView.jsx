@@ -686,10 +686,12 @@ export default function ClientesView() {
                   <td style={{ padding: '0.75rem 0.6rem', color: 'var(--text-muted)' }}>{cliente.ultima_sincronizacion || 'Nunca'}</td>
                   <td style={{ padding: '0.75rem 0.6rem' }}>
                     <span style={{ 
-                      padding: '0.25rem 0.65rem', 
+                      padding: '0.35rem 0.65rem', 
                       borderRadius: '20px', 
                       fontSize: '0.75rem', 
                       fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      display: 'inline-block',
                       background: (cliente.estado || '').includes('Al día') ? 'var(--success-bg)' : (cliente.estado || '').includes('Error') ? 'var(--danger-bg)' : 'var(--warning)',
                       color: (cliente.estado || '').includes('Al día') ? 'var(--success)' : (cliente.estado || '').includes('Error') ? 'var(--danger)' : '#000'
                     }}>

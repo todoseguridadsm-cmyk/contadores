@@ -199,24 +199,36 @@ function App() {
           )}
         </nav>
         
-        <div className="sidebar-footer">
-          <div className="user-profile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div className="avatar" style={{ background: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--primary)' }}>
-                <span style={{ color: loggedUser.role === 'superadmin' ? '#000' : '#fff' }}>{avatarLetters}</span>
+                <div className="sidebar-footer">
+            <div className="user-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="avatar" style={{ background: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--primary)' }}>
+                  <span style={{ color: loggedUser.role === 'superadmin' ? '#000' : '#fff' }}>{avatarLetters}</span>
+                </div>
+                <div className="user-info">
+                  <p className="user-name">{loggedUser.username}</p>
+                  <p className="user-role" style={{ color: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--text-muted)' }}>
+                    {loggedUser.role === 'superadmin' ? 'Súper Admin' : 'Empleado'}
+                  </p>
+                </div>
               </div>
-              <div className="user-info">
-                <p className="user-name">{loggedUser.username}</p>
-                <p className="user-role" style={{ color: loggedUser.role === 'superadmin' ? 'var(--warning)' : 'var(--text-muted)' }}>
-                  {loggedUser.role === 'superadmin' ? 'Súper Admin' : 'Empleado'}
-                </p>
-              </div>
+              <button 
+                onClick={handleLogout}
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', 
+                  width: '100%', padding: '0.6rem', 
+                  background: 'rgba(255, 59, 48, 0.1)', color: 'var(--danger)', 
+                  border: '1px solid rgba(255, 59, 48, 0.2)', borderRadius: 'var(--radius-md)',
+                  fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'var(--danger)'; e.currentTarget.style.color = 'white'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 59, 48, 0.1)'; e.currentTarget.style.color = 'var(--danger)'; }}
+              >
+                <LogOut size={16} /> Cerrar Sesión
+              </button>
             </div>
-            <button className="icon-btn" onClick={handleLogout} title="Cerrar Sesión">
-              <LogOut size={18} className="danger-text" />
-            </button>
           </div>
-        </div>
       </aside>
 
       {/* Main Content */}

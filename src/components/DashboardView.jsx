@@ -162,18 +162,6 @@ export default function DashboardView() {
     exportarTxtAfip(ventasStats.lista, comprasStats.lista, clienteActivo.nombre);
   };
 
-  const handleExportarTxtSoloFotos = () => {
-    if (!clienteActivo) return alert("Selecciona un cliente para exportar.");
-    const ventasFotos = (ventasMensuales.lista || []).filter(c => c.origen === 'foto');
-    const comprasFotos = (comprasMensuales.lista || []).filter(c => c.origen === 'foto');
-    
-    if (ventasFotos.length === 0 && comprasFotos.length === 0) {
-      return alert("No hay comprobantes cargados por foto/manuales en este mes.");
-    }
-    
-    exportarTxtAfip(ventasFotos, comprasFotos, `${clienteActivo.nombre}_SOLO_FOTOS`);
-  };
-
   const handleExcelLoaded = (data, tipo) => {
     const resumen = procesarComprobantes(data);
     if (tipo === 'ventas') {
@@ -395,9 +383,6 @@ export default function DashboardView() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn" onClick={handleExportarTxt} disabled={!clienteActivo} style={{ background: '#28a745', color: 'white', border: 'none', fontWeight: 'bold' }}>
             Descargar TXTs AFIP (Todo)
-          </button>
-          <button className="btn" onClick={handleExportarTxtSoloFotos} disabled={!clienteActivo} style={{ background: '#0284c7', color: 'white', border: 'none', fontWeight: 'bold' }} title="Descarga los comprobantes subidos por foto para declarar en ARCA">
-            Descargar TXTs (Solo Fotos)
           </button>
           <button className="btn btn-secondary" onClick={handleExportarExcel} disabled={!clienteActivo}>
             Exportar a Excel
