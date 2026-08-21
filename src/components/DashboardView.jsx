@@ -29,6 +29,25 @@ export default function DashboardView() {
   const handleGuardarEnResumenAnual = async () => {
     if (!clienteActivo) return;
     setGuardandoAnual(true);
+    
+    // 1. Calcular y guardar el saldo técnico para el próximo mes
+    const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
+    const nuevoSaldo = resultadoMensual.nuevoSaldoAFavor || 0;
+    
+    try {
+      const { error: saldoError } = await supabase
+        .from('clientes')
+        .update({ saldo_acumulado: nuevoSaldo })
+        .eq('id', clienteActivo.id);
+        
+      if (saldoError && saldoError.message.includes('column "saldo_acumulado"')) {
+        alert('Debes agregar la columna saldo_acumulado en Supabase.');
+      }
+    } catch (e) {
+      console.error("Error guardando saldo", e);
+    }
+
+    // 2. Archivar las estadísticas del mes en la nube (Resumen Anual)
     try {
       const historialAnual = clienteActivo.historial_anual || (clienteActivo.ventas_json && clienteActivo.ventas_json.historial_anual) || {};
       const anioObj = historialAnual[anioSeleccionado] || {};
@@ -58,11 +77,12 @@ export default function DashboardView() {
         .update({ ventas_json: ventasData })
         .eq('id', clienteActivo.id);
 
-      alert(`✅ ¡Mes ${mesSeleccionado}/${anioSeleccionado} archivado en la nube para el Resumen Anualizado de ${clienteActivo.nombre}!`);
+      alert(`¡Mes archivado exitosamente!\n\nSe guardaron las estadísticas en el Resumen Anual y se arrastró un Saldo a Favor Técnico de $${nuevoSaldo.toFixed(2)} para el próximo mes.`);
+      
       fetchClientes();
-    } catch (err) {
-      console.error(err);
-      alert('Error al archivar en nube: ' + err.message);
+    } catch (error) {
+      console.error(error);
+      alert('Error guardando los datos en la nube.');
     } finally {
       setGuardandoAnual(false);
     }
@@ -130,33 +150,6 @@ export default function DashboardView() {
     }
     
     exportarTxtAfip(ventasFotos, comprasFotos, `${clienteActivo.nombre}_SOLO_FOTOS`);
-  };
-
-  const handleGuardarSaldo = async () => {
-    if (!clienteActivo) return;
-    const resultadoMensual = calcularSaldos(ventasStats, comprasStats, saldoAnterior);
-    const nuevoSaldo = resultadoMensual.nuevoSaldoAFavor || 0;
-    
-    try {
-      const { error } = await supabase
-        .from('clientes')
-        .update({ saldo_acumulado: nuevoSaldo })
-        .eq('id', clienteActivo.id);
-        
-      if (error) {
-        if (error.message.includes('column "saldo_acumulado" of relation "clientes" does not exist')) {
-          alert('Debes agregar la columna saldo_acumulado en Supabase. Corre el código SQL que te pasé en el chat.');
-        } else {
-          throw error;
-        }
-      } else {
-        alert(`¡Mes cerrado exitosamente! Se guardó un Saldo a Favor Técnico de $${nuevoSaldo} para el próximo mes.`);
-        fetchClientes();
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error guardando el saldo en la base de datos.');
-    }
   };
 
   const handleExcelLoaded = (data, tipo) => {
@@ -610,9 +603,9 @@ export default function DashboardView() {
               <option value="2025">2025</option>
               <option value="2024">2024</option>
             </select>
-            <button className="btn btn-primary" onClick={handleGuardarEnResumenAnual} disabled={guardandoAnual} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-              {guardandoAnual ? 'Guardando...' : 'Archivar Mes en Nube'}
-            </button>
+              <button className="btn btn-primary" onClick={handleGuardarEnResumenAnual} disabled={guardandoAnual || !clienteActivo} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Save size={16} /> {guardandoAnual ? 'Procesando...' : 'Archivar y Cerrar Mes'}
+              </button>
           </div>
         </div>
       )}
@@ -721,14 +714,9 @@ export default function DashboardView() {
               )}
             </div>
           </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button className="btn btn-primary" style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }} onClick={handleGuardarSaldo} disabled={!clienteActivo}>
-              <Save size={18} /> Cerrar Mes y Guardar Saldo Técnico
-            </button>
+                    {/* Bottom panel actions removed to simplify UI */}
           </div>
         </div>
-      </div>
 
       {renderTablaDetalle(ventasStats.lista, 'Ventas Emitidas', 'success')}
       {renderTablaDetalle(comprasStats.lista, 'Compras Recibidas', 'danger')}
