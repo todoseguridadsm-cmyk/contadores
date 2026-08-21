@@ -15,12 +15,21 @@ export default function TicketsView() {
     setUploadedFiles(prev => prev.map(f => {
       if (f.id === id) {
         const updatedData = { ...f.data };
-        if (['tipoComp', 'fecha', 'razon_social', 'cuit_emisor', 'puntoVenta', 'numero'].includes(field)) {
+        if (['tipoComp', 'fecha', 'razon_social', 'cuit_emisor', 'puntoVenta', 'numero', 'tipo_combustible'].includes(field)) {
           updatedData[field] = value;
         } else {
           updatedData[field] = parseFloat(value) || 0;
         }
         
+        if (['litros', 'valor_itc_unitario', 'itc_discriminado', 'tipo_combustible'].includes(field)) {
+          const litros = parseFloat(updatedData.litros || 0);
+          const valorUni = parseFloat(updatedData.valor_itc_unitario || 0);
+          const discrim = parseFloat(updatedData.itc_discriminado || 0);
+          const itcTotal = discrim > 0 ? discrim : (litros * valorUni);
+          updatedData.itc_total = itcTotal;
+          updatedData.pago_a_cuenta_iva = updatedData.tipo_combustible === 'diesel' ? Number((itcTotal * 0.45).toFixed(2)) : 0;
+        }
+
         // Auto-calcular Neto: neto = total - iva - no_gravado - exento
         if (['total', 'iva', 'no_gravado', 'exento'].includes(field)) {
           const tot = parseFloat(field === 'total' ? value : (updatedData.total || 0)) || 0;
@@ -235,6 +244,7 @@ export default function TicketsView() {
           exento: Number(ticket.data.exento || 0),
           iva: Number(ticket.data.iva || 0),
           total: Number(ticket.data.total || 0),
+          pago_a_cuenta_iva: Number(ticket.data.pago_a_cuenta_iva || 0),
           origen: 'foto'
         }));
 
@@ -405,6 +415,7 @@ export default function TicketsView() {
                       <th style={{ padding: '0.75rem 0.5rem', width: '140px' }}>Punto Venta - Nro</th>
                       <th style={{ padding: '0.75rem 0.5rem', width: '220px' }}>Emisor (Razón / CUIT)</th>
                       <th style={{ padding: '0.75rem 0.5rem', width: '100px' }}>Fecha</th>
+                      <th style={{ padding: '0.75rem 0.5rem', width: '120px' }}>Combustible</th>
                       <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>IVA ($)</th>
                       <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>No Grav. ($)</th>
                       <th style={{ padding: '0.75rem 0.5rem', width: '80px', textAlign: 'right' }}>Exento ($)</th>
@@ -521,6 +532,48 @@ export default function TicketsView() {
                                   onChange={(e) => handleUpdateTicketField(file.id, 'fecha', e.target.value)}
                                   placeholder="DD/MM/YYYY"
                                 />
+                              )}
+                            </td>
+
+                            {/* COMBUSTIBLE */}
+                            <td style={{ padding: '0.5rem' }}>
+                              {file.status === '¡Subido!' ? (
+                                <span>{file.data.tipo_combustible}</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                  <select 
+                                    className="input-field" 
+                                    style={{ padding: '0.2rem', fontSize: '0.8rem', width: '100%', minHeight: 'auto' }}
+                                    value={file.data.tipo_combustible || 'ninguno'} 
+                                    onChange={(e) => handleUpdateTicketField(file.id, 'tipo_combustible', e.target.value)}
+                                  >
+                                    <option value="ninguno">No Comb.</option>
+                                    <option value="nafta">Nafta</option>
+                                    <option value="diesel">Diesel/GasOil</option>
+                                  </select>
+                                  {file.data.tipo_combustible === 'diesel' && (
+                                    <>
+                                      <input 
+                                        type="number" step="0.01" className="input-field" 
+                                        style={{ padding: '0.2rem', fontSize: '0.75rem', width: '100%' }} 
+                                        placeholder="Litros" 
+                                        value={file.data.litros || ''} 
+                                        onChange={(e) => handleUpdateTicketField(file.id, 'litros', e.target.value)}
+                                      />
+                                      <input 
+                                        type="number" step="0.01" className="input-field" 
+                                        style={{ padding: '0.2rem', fontSize: '0.75rem', width: '100%' }} 
+                                        placeholder="Total ITC discriminado" 
+                                        value={file.data.itc_discriminado || ''} 
+                                        title="Monto ITC (Discriminado o Litros x Unitario)"
+                                        onChange={(e) => handleUpdateTicketField(file.id, 'itc_discriminado', e.target.value)}
+                                      />
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--success)' }}>
+                                        45%: {formatMoney(file.data.pago_a_cuenta_iva)}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
                               )}
                             </td>
 

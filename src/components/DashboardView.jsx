@@ -661,11 +661,11 @@ export default function DashboardView() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <div className="card highlight-card" style={{ background: 'linear-gradient(135deg, var(--warning) 0%, #e6a800 100%)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <div className="metric-header">
-            <span className="metric-label text-white" style={{ fontWeight: 'bold' }}>Libre Disponibilidad (Percepciones)</span>
+            <span className="metric-label text-white" style={{ fontWeight: 'bold' }}>Libre Disponibilidad (Percepciones + ITC)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
             <span className="text-white" style={{ fontSize: '1.75rem', fontWeight: 'bold' }}>
-              {formatMoney((ventasMensuales.totalPercepcionesNacionales || 0) + (ventasMensuales.totalPercepcionesIIBB || 0) + (ventasMensuales.totalPercepcionesMunicipales || 0))}
+              {formatMoney((comprasMensuales.totalPercepcionesNacionales || 0) + (comprasMensuales.totalPercepcionesIIBB || 0) + (comprasMensuales.totalPercepcionesMunicipales || 0) + (comprasMensuales.totalPagoACuentaIva || 0))}
             </span>
           </div>
           <p className="text-white-50" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>Sirve para cancelar VEP o IIBB</p>

@@ -60,6 +60,9 @@ app.post('/api/parse-ticket', upload.single('ticketImage'), async (req, res) => 
 - "exento": El importe exento si lo hay (como número, de lo contrario 0).
 - "total": El monto total del comprobante (como número).
 - "categoria": Sugiere una categoría (ej. Combustible, Supermercado, Gastos Generales).
+- "tipo_combustible": Analiza los items vendidos. Si incluye gasoil, gas oil, diesel, euro diesel, etc., responde "diesel". Si es nafta, super, premium, responde "nafta". Si no es combustible, responde "ninguno".
+- "litros": Si es combustible, extrae la cantidad de litros cargados (como número). Si no, 0.
+- "itc_discriminado": Si el ticket tiene discriminado el concepto "ITC" o "Impuesto a los Combustibles Líquidos", extrae el monto total de ese impuesto (como número). Si no lo discrimina o no hay, 0.
 
 Responde ÚNICAMENTE con el objeto JSON, sin formato markdown ni texto adicional.`;
 

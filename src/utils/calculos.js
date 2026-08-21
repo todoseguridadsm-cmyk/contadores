@@ -10,6 +10,7 @@ export function procesarComprobantes(comprobantes) {
     totalPercepcionesIIBB: 0,
     totalPercepcionesMunicipales: 0,
     totalImpuestosInternos: 0,
+    totalPagoACuentaIva: 0,
     totalGeneral: 0,
     cantidadComprobantes: comprobantes.length,
     lista: []
@@ -55,6 +56,7 @@ export function procesarComprobantes(comprobantes) {
     const percIIBB = parseImporte(getField('percIIBB', 'Percepciones Ingresos Brutos', 'Percepciones IIBB'));
     const percMuni = parseImporte(getField('percMun', 'Percepciones Impuestos Municipales'));
     const impInt = parseImporte(getField('impInt', 'Impuestos Internos'));
+    const pagoACuentaIva = parseImporte(getField('pago_a_cuenta_iva', 'Pago a Cuenta IVA'));
 
     // IVA directo o alícuotas
     let iva21 = parseImporte(getField('IVA 21%', 'iva21', 'Importe IVA 21%'));
@@ -105,6 +107,7 @@ export function procesarComprobantes(comprobantes) {
     resumen.totalPercepcionesIIBB += percIIBB;
     resumen.totalPercepcionesMunicipales += percMuni;
     resumen.totalImpuestosInternos += impInt;
+    resumen.totalPagoACuentaIva += pagoACuentaIva;
 
     resumen.lista.push({
       fecha: comp.fecha || comp['Fecha'] || comp['Fecha de Emisión'] || '',
@@ -125,6 +128,7 @@ export function procesarComprobantes(comprobantes) {
       iva105,
       iva27,
       total,
+      pago_a_cuenta_iva: pagoACuentaIva,
       origen: comp.origen || 'afip'
     });
   });
@@ -175,6 +179,7 @@ export function calcularSaldos(resumenVentas = {}, resumenCompras = {}, saldoAnt
   const percepcionesNacionales = resumenCompras.totalPercepcionesNacionales || 0;
   const percepcionesIIBB = resumenCompras.totalPercepcionesIIBB || 0;
   const percepcionesMunicipales = resumenCompras.totalPercepcionesMunicipales || 0;
+  const pagoACuentaIva = resumenCompras.totalPagoACuentaIva || 0;
 
   // Informativos
   const noGravadoVentas = resumenVentas.totalNoGravado || 0;
@@ -185,8 +190,9 @@ export function calcularSaldos(resumenVentas = {}, resumenCompras = {}, saldoAnt
   let ivaAPagar = saldoTecnicoPuro > 0 ? saldoTecnicoPuro : 0;
   let nuevoSaldoAFavorTecnico = saldoTecnicoPuro < 0 ? Math.abs(saldoTecnicoPuro) : 0;
   
-  // El IVA a Pagar se cancela primero con las Percepciones Nacionales de Libre Disponibilidad
-  let totalAPagarFinal = ivaAPagar - percepcionesNacionales;
+  // El IVA a Pagar se cancela primero con las Percepciones Nacionales y Pago a Cuenta
+  const totalLibreDispAsignable = percepcionesNacionales + pagoACuentaIva;
+  let totalAPagarFinal = ivaAPagar - totalLibreDispAsignable;
   let libreDisponibilidadRestante = 0;
   
   if (totalAPagarFinal < 0) {
@@ -205,6 +211,7 @@ export function calcularSaldos(resumenVentas = {}, resumenCompras = {}, saldoAnt
     percepcionesNacionales,
     percepcionesIIBB,
     percepcionesMunicipales,
+    pagoACuentaIva,
     
     // Libre Disponibilidad
     libreDisponibilidadUsada: ivaAPagar - totalAPagarFinal,
