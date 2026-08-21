@@ -15,6 +15,12 @@ function App() {
   const [loggedUser, setLoggedUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleLogout = useCallback(() => {
     setLoggedUser(null);
@@ -216,18 +222,29 @@ function App() {
       {/* Main Content */}
       <main className="main-content">
         {/* Header */}
-        <header className="header glass">
-          <div className="search-bar">
-            <Search size={18} className="search-icon" />
-            <input type="text" placeholder="Buscar cliente, cuit o comprobante..." className="input-field search-input" />
+        <header className="header glass" style={{ justifyContent: 'space-between', padding: '0 1.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', textTransform: 'capitalize' }}>
+              {currentDateTime.toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Panel de Control Central
+            </span>
           </div>
           <div className="header-actions">
-            {hasAccess('clientes') && (
-              <button className="btn btn-primary" onClick={() => setActiveTab('clientes')}>
-                <Plus size={18} />
-                <span>Nuevo Cliente</span>
-              </button>
-            )}
+            <div style={{ 
+              background: 'var(--bg-surface)', 
+              border: '1px solid var(--border-color)', 
+              padding: '0.4rem 1.2rem', 
+              borderRadius: 'var(--radius-full)', 
+              fontWeight: 800, 
+              color: 'var(--primary)', 
+              letterSpacing: '1px',
+              fontSize: '1.1rem',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+            }}>
+              {currentDateTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
           </div>
         </header>
 
