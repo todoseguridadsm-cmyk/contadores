@@ -134,8 +134,8 @@ export default function AnualView() {
     const cat = getCategoriaCliente(cliente);
     const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
     const coincideTexto = !searchTerm ||
-      cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.cuit?.includes(searchTerm);
+      (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (cliente.cuit || '').includes(searchTerm);
     return coincideCategoria && coincideTexto;
   });
 
@@ -161,8 +161,116 @@ export default function AnualView() {
         </div>
       </div>
 
+      {/* Directorio General de todos los clientes con su Resumen Anualizado */}
+      <div className="card full-width" style={{ padding: 0, overflow: 'hidden', marginBottom: '2.5rem' }}>
+        <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Filter size={16} /> FILTRAR CARTERA POR CATEGORÍA:
+            </span>
+            <button
+              className={`btn ${filtroCategoria === 'TODOS' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setFiltroCategoria('TODOS')}
+              style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+            >
+              Todos ({clientes.length})
+            </button>
+            {Object.keys(CATEGORIAS_INFO).map(catKey => {
+              const count = clientes.filter(c => getCategoriaCliente(c) === catKey).length;
+              return (
+                <button
+                  key={catKey}
+                  onClick={() => setFiltroCategoria(catKey)}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1px solid ${CATEGORIAS_INFO[catKey].color}`,
+                    background: filtroCategoria === catKey ? CATEGORIAS_INFO[catKey].color : CATEGORIAS_INFO[catKey].bg,
+                    color: filtroCategoria === catKey ? '#fff' : CATEGORIAS_INFO[catKey].color
+                  }}
+                >
+                  Tipo {catKey} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ position: 'relative', width: '250px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Buscar cliente por nombre..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '2.25rem', width: '100%', fontSize: '0.82rem' }}
+            />
+          </div>
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
+            <tr>
+              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cliente</th>
+              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>Categoría</th>
+              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Neto Ventas Anual</th>
+              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Neto Compras Anual</th>
+              <th style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientesFiltrados.map(c => {
+              const meses = obtener12MesesCliente(c);
+              const totalV = meses.reduce((acc, m) => acc + m.ventasNeto, 0);
+              const totalC = meses.reduce((acc, m) => acc + m.comprasNeto, 0);
+              const cat = getCategoriaCliente(c);
+
+              return (
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-light)', background: c.id == clienteActivoId ? 'var(--secondary-bg)' : 'transparent' }}>
+                  <td style={{ padding: '0.85rem 1.5rem', fontWeight: 600 }}>
+                    <span style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>#{obtenerCodigo3DCliente(c)}</span>{c.nombre}
+                  </td>
+                  <td style={{ padding: '0.85rem 1.5rem' }}>
+                    <span style={{
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      background: CATEGORIAS_INFO[cat]?.bg,
+                      color: CATEGORIAS_INFO[cat]?.color
+                    }}>
+                      Tipo {cat}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
+                    {formatMoney(totalV)}
+                  </td>
+                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>
+                    {formatMoney(totalC)}
+                  </td>
+                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setClienteActivoId(c.id);
+                        setTimeout(() => document.getElementById('planilla-anual')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                      }}
+                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+                    >
+                      <Eye size={16} /> Ver su Planilla 12 Meses
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      
       {/* Selector de Cliente Principal para ver su Planilla de 12 Meses */}
-      <div className="card" style={{ marginBottom: '1.5rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
+      <div id="planilla-anual" className="card" style={{ marginBottom: '1.5rem', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>SELECCIONAR CLIENTE PARA PLANILLA ANUAL:</span>
@@ -392,113 +500,6 @@ export default function AnualView() {
         </div>
       )}
 
-      {/* Directorio General de todos los clientes con su Resumen Anualizado */}
-      <div className="card full-width" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Filter size={16} /> FILTRAR CARTERA POR CATEGORÍA:
-            </span>
-            <button
-              className={`btn ${filtroCategoria === 'TODOS' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFiltroCategoria('TODOS')}
-              style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
-            >
-              Todos ({clientes.length})
-            </button>
-            {Object.keys(CATEGORIAS_INFO).map(catKey => {
-              const count = clientes.filter(c => getCategoriaCliente(c) === catKey).length;
-              return (
-                <button
-                  key={catKey}
-                  onClick={() => setFiltroCategoria(catKey)}
-                  style={{
-                    padding: '0.3rem 0.75rem',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: `1px solid ${CATEGORIAS_INFO[catKey].color}`,
-                    background: filtroCategoria === catKey ? CATEGORIAS_INFO[catKey].color : CATEGORIAS_INFO[catKey].bg,
-                    color: filtroCategoria === catKey ? '#fff' : CATEGORIAS_INFO[catKey].color
-                  }}
-                >
-                  Tipo {catKey} ({count})
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ position: 'relative', width: '250px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Buscar cliente por nombre..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '2.25rem', width: '100%', fontSize: '0.82rem' }}
-            />
-          </div>
-        </div>
-
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)' }}>
-            <tr>
-              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cliente</th>
-              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>Categoría</th>
-              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Neto Ventas Anual</th>
-              <th style={{ padding: '0.85rem 1.5rem', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Neto Compras Anual</th>
-              <th style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientesFiltrados.map(c => {
-              const meses = obtener12MesesCliente(c);
-              const totalV = meses.reduce((acc, m) => acc + m.ventasNeto, 0);
-              const totalC = meses.reduce((acc, m) => acc + m.comprasNeto, 0);
-              const cat = getCategoriaCliente(c);
-
-              return (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-light)', background: c.id == clienteActivoId ? 'var(--secondary-bg)' : 'transparent' }}>
-                  <td style={{ padding: '0.85rem 1.5rem', fontWeight: 600 }}>
-                    <span style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>#{obtenerCodigo3DCliente(c)}</span>{c.nombre}
-                  </td>
-                  <td style={{ padding: '0.85rem 1.5rem' }}>
-                    <span style={{
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '6px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      background: CATEGORIAS_INFO[cat]?.bg,
-                      color: CATEGORIAS_INFO[cat]?.color
-                    }}>
-                      Tipo {cat}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>
-                    {formatMoney(totalV)}
-                  </td>
-                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>
-                    {formatMoney(totalC)}
-                  </td>
-                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setClienteActivoId(c.id);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
-                    >
-                      <Eye size={16} /> Ver su Planilla 12 Meses
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );

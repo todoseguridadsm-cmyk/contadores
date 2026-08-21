@@ -97,7 +97,7 @@ export default function DashboardView() {
       else setComprasStats({ totalNetoGravado: 0, totalNetoGravado_NC: 0, totalIVA: 0, totalIVA_NC: 0, cantidadComprobantes: 0, lista: [] });
 
       if (cliente.saldo_acumulado !== undefined && cliente.saldo_acumulado !== null) {
-        setSaldoAnterior(Number(cliente.saldo_acumulado));
+        setSaldoAnterior(Number(Number(cliente.saldo_acumulado).toFixed(2)));
       } else {
         setSaldoAnterior(0);
       }
@@ -447,7 +447,7 @@ export default function DashboardView() {
                 Seleccionar Cliente ({clientes.filter(cliente => {
                   const cat = getCategoriaCliente(cliente);
                   const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
-                  const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
+                  const coincideTexto = !searchTerm || (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) || (cliente.cuit || '').includes(searchTerm);
                   return coincideCategoria && coincideTexto;
                 }).length} disponibles)
               </label>
@@ -469,7 +469,7 @@ export default function DashboardView() {
               {clientes.filter(cliente => {
                 const cat = getCategoriaCliente(cliente);
                 const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
-                const coincideTexto = !searchTerm || cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || cliente.cuit?.includes(searchTerm);
+                const coincideTexto = !searchTerm || (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) || (cliente.cuit || '').includes(searchTerm);
                 return coincideCategoria && coincideTexto;
               })
               .sort((a, b) => {

@@ -474,7 +474,7 @@ export default function ClientesView() {
     const cleanCuit = (cliente.cuit || '').replace(/\D/g, '');
     
     const coincideTexto = !searchTerm || 
-      cliente.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
       (cleanSearch && cleanCuit.includes(cleanSearch)) ||
       cliente.cuit?.includes(searchTerm) ||
       cliente.id?.toString() === searchTerm ||
