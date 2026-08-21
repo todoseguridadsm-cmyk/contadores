@@ -133,9 +133,17 @@ export default function AnualView() {
   const clientesFiltrados = clientes.filter(cliente => {
     const cat = getCategoriaCliente(cliente);
     const coincideCategoria = filtroCategoria === 'TODOS' || cat === filtroCategoria;
-    const coincideTexto = !searchTerm ||
-      (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (cliente.cuit || '').includes(searchTerm);
+    
+    const cleanSearch = searchTerm.trim().toLowerCase().replace(/\D/g, '');
+    const cleanCuit = (cliente.cuit || '').replace(/\D/g, '');
+    
+    const coincideTexto = !searchTerm || 
+      (cliente.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (cleanSearch && cleanCuit.includes(cleanSearch)) ||
+      cliente.cuit?.includes(searchTerm) ||
+      cliente.id?.toString() === searchTerm ||
+      obtenerCodigo3DCliente(cliente).includes(searchTerm);
+      
     return coincideCategoria && coincideTexto;
   });
 
