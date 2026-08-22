@@ -156,59 +156,78 @@ export default function ClientesView() {
     try {
       if(!import.meta.env.VITE_SUPABASE_URL) throw new Error("No database connected");
 
-      if (editingId) {
-        localStorage.setItem(`cliente_cat_${editingId}`, categoria);
-        const { error } = await supabase
-          .from('clientes')
-          .update({ nombre, cuit, clave_fiscal: claveFiscal, clave_atm: claveAtm, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, categoria })
-          .eq('id', editingId);
-        
+      let payload = { 
+        nombre, 
+        cuit, 
+        clave_fiscal: claveFiscal,
+        clave_atm: claveAtm,
+        tipo_contribuyente: tipoContribuyente,
+        cuit_representante: cuitRepresentante,
+        categoria
+      };
+
+      if (!editingId) {
+        payload.estado = 'Pendiente Sincronización';
+        payload.ultima_sincronizacion = 'Nunca';
+      }
+
+      // Guardado con reintentos para omitir columnas faltantes
+      let success = false;
+      let dataResult = null;
+      let currentPayload = { ...payload };
+
+      while (!success) {
+        const { error, data } = editingId
+          ? await supabase.from('clientes').update(currentPayload).eq('id', editingId).select()
+          : await supabase.from('clientes').insert([currentPayload]).select();
+
         if (error) {
-           if (error.message.includes('categoria')) {
-             await supabase
-               .from('clientes')
-               .update({ nombre, cuit, clave_fiscal: claveFiscal, clave_atm: claveAtm, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante })
-               .eq('id', editingId);
-           } else if (error.message.includes('tipo_contribuyente') || error.message.includes('cuit_representante')) {
-               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' (ambas tipo texto) a tu tabla 'clientes' en Supabase para usar esta función.");
-           } else throw error;
+          // Detectar si el error es por una columna inexistente
+          const match = error.message.match(/column "(.*?)"/i) || error.message.match(/Could not find the '(.*?)' column/i);
+          const missingColumn = match ? match[1] : null;
+
+          if (missingColumn && currentPayload[missingColumn] !== undefined) {
+            console.warn(`Columna faltante detectada: ${missingColumn}. Ignorando...`);
+            delete currentPayload[missingColumn];
+            continue; // Reintentar sin la columna
+          } else if (error.message.includes('categoria')) {
+            delete currentPayload.categoria;
+            continue;
+          } else if (error.message.includes('tipo_contribuyente')) {
+            delete currentPayload.tipo_contribuyente;
+            continue;
+          } else if (error.message.includes('cuit_representante')) {
+            delete currentPayload.cuit_representante;
+            continue;
+          } else if (error.message.includes('clave_atm')) {
+            delete currentPayload.clave_atm;
+            continue;
+          }
+
+          // Si el error no es de columna faltante, lo lanzamos
+          throw error;
         }
+
+        success = true;
+        dataResult = data;
+      }
+
+      // Guardar categoría en localStorage como fallback visual rápido
+      const savedId = editingId || (dataResult && dataResult[0] ? dataResult[0].id : null);
+      if (savedId && categoria) {
+        localStorage.setItem(`cliente_cat_${savedId}`, categoria);
+      }
+
+      if (editingId) {
         setIsEditModalOpen(false);
       } else {
-        const nuevoCliente = { 
-          nombre, 
-          cuit, 
-          clave_fiscal: claveFiscal,
-          clave_atm: claveAtm,
-          tipo_contribuyente: tipoContribuyente,
-          cuit_representante: cuitRepresentante,
-          categoria,
-          estado: 'Pendiente Sincronización',
-          ultima_sincronizacion: 'Nunca'
-        };
-        const { error, data } = await supabase.from('clientes').insert([nuevoCliente]).select();
-        if (error) {
-           if (error.message.includes('categoria')) {
-             const fallbackCliente = {
-               nombre, cuit, clave_fiscal: claveFiscal, tipo_contribuyente: tipoContribuyente, cuit_representante: cuitRepresentante, estado: 'Pendiente Sincronización', ultima_sincronizacion: 'Nunca'
-             };
-             const { data: d2 } = await supabase.from('clientes').insert([fallbackCliente]).select();
-             if (d2 && d2[0]) {
-               localStorage.setItem(`cliente_cat_${d2[0].id}`, categoria);
-             }
-           } else if (error.message.includes('tipo_contribuyente') || error.message.includes('cuit_representante')) {
-               alert("Debes agregar las columnas 'tipo_contribuyente' y 'cuit_representante' (ambas tipo texto) a tu tabla 'clientes' en Supabase para usar esta función.");
-           } else throw error;
-        } else if (data && data[0]) {
-          localStorage.setItem(`cliente_cat_${data[0].id}`, categoria);
-        }
         setIsModalOpen(false);
       }
       
       await fetchClientes();
     } catch (error) {
       console.error("Error guardando cliente:", error);
-      alert("Hubo un error al guardar el cliente.");
+      alert(`Hubo un error al guardar el cliente: ${error.message || 'Error desconocido'}`);
     } finally {
       setIsSubmitting(false);
     }
